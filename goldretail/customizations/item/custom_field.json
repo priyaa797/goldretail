@@ -1,0 +1,26 @@
+[
+    {
+        "dt": "Item",
+        "fieldname": "category",
+        "label": "Category",
+        "fieldtype": "Link",
+        "options": "Item Category",
+        "insert_after": "item_group"
+    },
+    {
+        "dt": "Item",
+        "fieldname": "sub_category",
+        "label": "Sub Category",
+        "fieldtype": "Link",
+        "options": "Item Sub Category",
+        "insert_after": "category"
+    },
+    {
+        "dt": "Item",
+        "fieldname": "type",
+        "label": "Type",
+        "fieldtype": "Link",
+        "options": "Item Type",
+        "insert_after": "sub_category"
+    }
+]
