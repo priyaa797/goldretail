@@ -1,0 +1,654 @@
+CA ERP / FRAPPE + REACT FRONTEND
+Recommended package list and project structure
+Prepared: 20-Aug-2026
+
+1. RECOMMENDED STACK
+
+Core:
+- React
+- React DOM
+- JavaScript
+- Vite
+- frappe-react-sdk
+
+State management:
+- @reduxjs/toolkit
+- react-redux
+
+Routing:
+- react-router-dom
+
+UI / Design:
+- @mui/material
+- @emotion/react
+- @emotion/styled
+- @mui/icons-material
+- @mui/x-data-grid
+- @mui/x-date-pickers
+
+Charts / Dashboard:
+- recharts
+- @mui/x-charts (OPTIONAL; use either Recharts or MUI X Charts as the primary chart library)
+
+Notifications:
+- react-hot-toast
+
+Forms / Validation:
+- react-hook-form
+- zod
+- @hookform/resolvers
+
+Dates:
+- dayjs
+
+Utilities:
+- clsx
+- lodash-es
+- lucide-react (OPTIONAL; use MUI icons OR Lucide consistently, not both everywhere)
+
+Authentication / Cookies:
+- DO NOT add a cookie package initially.
+- Frappe's normal session authentication is cookie-based and frappe-react-sdk handles authentication.
+- If you have a specific requirement to manipulate non-HttpOnly client cookies, add js-cookie later.
+- Never store Frappe passwords, API secrets, or sensitive session tokens in localStorage.
+
+Performance / Data:
+- frappe-react-sdk already uses SWR internally.
+- Prefer frappe-react-sdk hooks for Frappe API/database operations instead of adding Axios separately.
+- Do not add React Query/TanStack Query unless there is a concrete requirement to manage a separate non-Frappe data source.
+
+Optional advanced packages:
+- socket.io-client (only if directly needed; frappe-react-sdk already provides realtime support)
+- react-error-boundary
+- date-fns (choose this OR dayjs, not both)
+- xlsx (only if client-side Excel export is required)
+- file-saver (only if browser-side file downloads are required)
+- papaparse (only if CSV parsing/export is required)
+- @dnd-kit/core, @dnd-kit/sortable (only if drag-and-drop dashboards are required)
+
+2. INSTALL COMMAND
+
+Recommended baseline:
+
+npm install react react-dom react-router-dom @reduxjs/toolkit react-redux frappe-react-sdk @mui/material @emotion/react @emotion/styled @mui/icons-material @mui/x-data-grid @mui/x-date-pickers recharts react-hot-toast react-hook-form zod @hookform/resolvers dayjs clsx lodash-es
+
+Development:
+
+npm install -D vite typescript @vitejs/plugin-react eslint @eslint/js typescript-eslint eslint-plugin-react-hooks eslint-plugin-react-refresh
+
+If using TypeScript, create the project with Vite's React TypeScript template.
+
+3. WHAT EACH PACKAGE IS FOR
+
+react / react-dom
+- Application framework and browser rendering.
+
+vite
+- Fast development server and production bundler.
+
+typescript
+- Type safety for ERP data, API responses, forms and components.
+
+frappe-react-sdk
+- Main connection layer between React and Frappe.
+- Authentication.
+- Get/list/count documents.
+- Create/update/delete documents.
+- Whitelisted method calls.
+- File uploads.
+- Search.
+- Realtime support.
+- Prefer this instead of writing Axios calls throughout the frontend.
+
+@reduxjs/toolkit + react-redux
+- Global application state.
+- UI state.
+- User/session-related frontend state.
+- Filters/preferences that genuinely need global state.
+- Avoid putting every API response into Redux; use frappe-react-sdk/SWR for server state.
+
+react-router-dom
+- SPA routing.
+- Protected routes.
+- Nested layouts.
+- Route-level pages.
+
+@mui/material + Emotion
+- Main responsive component system.
+- Cards, grids, dialogs, forms, tables, drawers, menus, tabs, etc.
+
+@mui/icons-material
+- Consistent Material icons.
+
+@mui/x-data-grid
+- ERP-style tables.
+- Sorting, filtering, pagination, column visibility, row selection.
+- Particularly useful for Stock Balance, Sales, Purchase, Customers, Suppliers, etc.
+
+@mui/x-date-pickers
+- Professional date/month/year/range selectors.
+
+recharts
+- Dashboard charts.
+- Line, bar, area, pie/donut, composed charts.
+- Good fit for ERP dashboards.
+
+react-hot-toast
+- Success/error/info notifications.
+- Use for save/update/delete/API feedback.
+
+react-hook-form + zod + @hookform/resolvers
+- Fast forms.
+- Validation.
+- Typed form schemas.
+- Useful for filters and custom ERP forms.
+
+dayjs
+- Lightweight date handling.
+- Good for ERP reporting periods and date filters.
+
+clsx
+- Conditional CSS/class composition.
+
+lodash-es
+- Useful utility functions where needed. Do not import the entire lodash package.
+
+4. IMPORTANT ARCHITECTURE DECISION FOR FRAPPE REPORTS
+
+Do NOT try to reproduce every ERPNext report entirely in React.
+
+Recommended architecture:
+
+React UI
+    |
+    +-- frappe-react-sdk
+    |
+    +-- Frappe REST / whitelisted Python methods
+    |
+    +-- ERPNext / Frappe database
+
+For reports such as:
+- Stock Balance
+- Stock Ledger
+- General Ledger
+- Trial Balance
+- Accounts Receivable
+- Accounts Payable
+- Sales Register
+- Purchase Register
+- Item-wise Sales
+- Customer-wise Sales
+
+Create backend Python API methods that call/reuse the appropriate Frappe/ERPNext report logic.
+
+Return structured JSON such as:
+
+{
+    "columns": [...],
+    "data": [...],
+    "summary": {...},
+    "chart": {...}
+}
+
+React should be responsible for:
+- Filters
+- Date range
+- Company
+- Warehouse
+- Item
+- Customer
+- Supplier
+- Pagination
+- Sorting
+- DataGrid display
+- Charts
+- Export
+- Print/PDF UI
+
+Backend should be responsible for:
+- Database queries
+- ERPNext report calculations
+- Permissions
+- Business rules
+- Large-data aggregation
+
+This keeps the frontend fast and avoids duplicating ERPNext accounting/business logic.
+
+5. RECOMMENDED FOLDER STRUCTURE
+
+frontend/
+├── public/
+│   ├── favicon.svg
+│   └── assets/
+│
+├── src/
+│   ├── app/
+│   │   ├── App.tsx
+│   │   ├── routes.tsx
+│   │   ├── store.ts
+│   │   └── providers.tsx
+│   │
+│   ├── assets/
+│   │
+│   ├── components/
+│   │   ├── common/
+│   │   │   ├── PageHeader.tsx
+│   │   │   ├── Loading.tsx
+│   │   │   ├── EmptyState.tsx
+│   │   │   ├── ErrorState.tsx
+│   │   │   ├── ConfirmDialog.tsx
+│   │   │   └── StatusChip.tsx
+│   │   │
+│   │   ├── layout/
+│   │   │   ├── AppLayout.tsx
+│   │   │   ├── Sidebar.tsx
+│   │   │   ├── Topbar.tsx
+│   │   │   └── MobileDrawer.tsx
+│   │   │
+│   │   ├── dashboard/
+│   │   │   ├── StatCard.tsx
+│   │   │   ├── ChartCard.tsx
+│   │   │   └── RecentActivity.tsx
+│   │   │
+│   │   └── data-table/
+│   │       ├── DataTable.tsx
+│   │       ├── TableToolbar.tsx
+│   │       └── TablePagination.tsx
+│   │
+│   ├── features/
+│   │   ├── auth/
+│   │   │   ├── Login.tsx
+│   │   │   ├── authSlice.ts
+│   │   │   └── auth.types.ts
+│   │   │
+│   │   ├── dashboard/
+│   │   │   ├── Dashboard.tsx
+│   │   │   ├── dashboardApi.ts
+│   │   │   └── dashboard.types.ts
+│   │   │
+│   │   ├── reports/
+│   │   │   ├── stock-balance/
+│   │   │   │   ├── StockBalance.tsx
+│   │   │   │   ├── stockBalanceApi.ts
+│   │   │   │   ├── stockBalance.types.ts
+│   │   │   │   └── stockBalanceColumns.tsx
+│   │   │   │
+│   │   │   ├── stock-ledger/
+│   │   │   ├── sales-register/
+│   │   │   ├── purchase-register/
+│   │   │   ├── general-ledger/
+│   │   │   └── trial-balance/
+│   │   │
+│   │   ├── masters/
+│   │   │   ├── items/
+│   │   │   ├── customers/
+│   │   │   ├── suppliers/
+│   │   │   └── warehouses/
+│   │   │
+│   │   └── settings/
+│   │
+│   ├── hooks/
+│   │   ├── useAuth.ts
+│   │   ├── useDebounce.ts
+│   │   ├── usePermissions.ts
+│   │   └── useResponsive.ts
+│   │
+│   ├── layouts/
+│   │   ├── AuthLayout.tsx
+│   │   └── DashboardLayout.tsx
+│   │
+│   ├── pages/
+│   │   ├── Login/
+│   │   ├── Dashboard/
+│   │   ├── Reports/
+│   │   ├── Masters/
+│   │   ├── Settings/
+│   │   └── NotFound/
+│   │
+│   ├── services/
+│   │   ├── frappe.ts
+│   │   ├── reports.ts
+│   │   └── permissions.ts
+│   │
+│   ├── store/
+│   │   ├── index.ts
+│   │   └── slices/
+│   │       ├── authSlice.ts
+│   │       ├── uiSlice.ts
+│   │       └── settingsSlice.ts
+│   │
+│   ├── theme/
+│   │   ├── theme.ts
+│   │   ├── colors.ts
+│   │   └── typography.ts
+│   │
+│   ├── types/
+│   │   ├── frappe.ts
+│   │   ├── common.ts
+│   │   └── reports.ts
+│   │
+│   ├── utils/
+│   │   ├── formatCurrency.ts
+│   │   ├── formatDate.ts
+│   │   ├── export.ts
+│   │   └── permissions.ts
+│   │
+│   ├── main.tsx
+│   └── index.css
+│
+├── package.json
+├── tsconfig.json
+├── vite.config.ts
+└── eslint.config.js
+
+6. DASHBOARD DESIGN
+
+Recommended dashboard sections:
+
+Top:
+- Welcome/header
+- Company selector
+- Financial year selector
+- Global date range
+- Notifications/profile
+
+KPI cards:
+- Total Sales
+- Total Purchase
+- Receivables
+- Payables
+- Stock Value
+- Outstanding Tasks
+
+Charts:
+- Sales trend
+- Purchase trend
+- Receivables vs Payables
+- Top selling items
+- Sales by customer
+- Stock by warehouse
+- Monthly revenue
+
+Tables:
+- Recent Sales
+- Recent Purchase Invoices
+- Low Stock Items
+- Overdue Receivables
+- Pending Tasks
+
+Use responsive MUI Grid and cards so the dashboard works on desktop, tablet and mobile.
+
+7. COLOUR / DESIGN SYSTEM
+
+Use a bright professional palette rather than random colours throughout the application.
+
+Example semantic colours:
+- Primary: blue/indigo
+- Secondary: purple
+- Success: green
+- Warning: amber/orange
+- Error: red
+- Info: cyan/blue
+- Background: very light neutral
+- Cards: white
+
+Important:
+- Define colours centrally in theme/colors.ts.
+- Do not hard-code colours in every component.
+- Use semantic colours consistently.
+- Support light theme first.
+- Keep the theme ready for dark mode.
+
+8. RESPONSIVENESS
+
+Build mobile-first.
+
+Desktop:
+- Permanent sidebar
+- Dense dashboard
+- Multi-column KPI cards
+- Large report tables
+
+Tablet:
+- Collapsible sidebar
+- 2-column cards
+- Responsive filters
+
+Mobile:
+- Drawer navigation
+- 1-column cards
+- Horizontal/stacked filter controls
+- Tables with controlled horizontal scrolling or mobile-specific card presentation
+- Bottom/action buttons where appropriate
+
+9. REPORT COMPONENT STANDARD
+
+Every report should follow the same structure:
+
+ReportHeader
+    - Report title
+    - Description
+    - Refresh
+    - Export
+    - Print
+
+ReportFilters
+    - From Date
+    - To Date
+    - Company
+    - Warehouse
+    - Item
+    - Customer/Supplier
+    - Additional report-specific filters
+
+ReportSummary
+    - Total quantity
+    - Total value
+    - Other important totals
+
+ReportChart
+    - Optional chart
+
+ReportDataGrid
+    - Columns
+    - Sorting
+    - Filtering
+    - Pagination
+    - Column visibility
+
+This gives the whole ERP a consistent professional experience.
+
+10. REDUX RULE
+
+Use Redux for:
+- Authentication/UI state
+- Sidebar state
+- Theme/preferences
+- Global filters if genuinely shared
+- User preferences
+
+Do NOT use Redux as the primary cache for every Frappe document/report.
+
+Use frappe-react-sdk/SWR for server data.
+
+11. SECURITY
+
+- Keep business logic and permission checks on the Frappe backend.
+- Do not trust frontend permissions for authorization.
+- Use Frappe session authentication where possible.
+- Do not expose API secrets in Vite environment variables.
+- Do not put sensitive credentials in localStorage.
+- Validate filters and permissions on the server.
+- Use whitelisted backend methods for custom reports.
+
+12. PACKAGES I WOULD NOT ADD INITIALLY
+
+Avoid unnecessary dependency growth.
+
+Do not add initially:
+- axios
+- @tanstack/react-query
+- moment
+- bootstrap
+- tailwindcss
+- multiple chart libraries
+- multiple icon libraries
+- js-cookie
+- socket.io-client
+
+Add them only if a concrete requirement appears.
+
+13. FINAL BASELINE PACKAGE SET
+
+Production dependencies:
+
+react
+react-dom
+react-router-dom
+frappe-react-sdk
+
+@reduxjs/toolkit
+react-redux
+
+@mui/material
+@emotion/react
+@emotion/styled
+@mui/icons-material
+@mui/x-data-grid
+@mui/x-date-pickers
+
+recharts
+
+react-hot-toast
+
+react-hook-form
+zod
+@hookform/resolvers
+
+dayjs
+clsx
+lodash-es
+
+Development dependencies:
+
+vite
+typescript
+@vitejs/plugin-react
+eslint
+@eslint/js
+typescript-eslint
+eslint-plugin-react-hooks
+eslint-plugin-react-refresh
+
+14. OPTIONAL REPORT EXPORT PACKAGES
+
+Only add when required:
+
+xlsx
+file-saver
+papaparse
+
+For PDF:
+Prefer server-side Frappe PDF generation when the report is already a Frappe/ERP report. Avoid building a full PDF engine into the React bundle unless client-side PDF generation is specifically required.
+
+15. FRAPPE APP LOCATION
+
+Recommended:
+
+apps/
+└── your_app/
+    ├── your_app/
+    │   ├── hooks.py
+    │   ├── api/
+    │   ├── report/
+    │   ├── your_app/
+    │   ├── public/
+    │   ├── templates/
+    │   └── www/
+    │
+    ├── frontend/
+    │   ├── src/
+    │   ├── public/
+    │   ├── package.json
+    │   ├── vite.config.ts
+    │   └── tsconfig.json
+    │
+    ├── requirements.txt
+    ├── package.json
+    └── pyproject.toml
+
+The Frappe app remains the backend/module container, while frontend/ contains the React/Vite SPA.
+
+16. IMPORTANT FRAPPE INTEGRATION NOTE
+
+Frappe's app structure is still Python-based, and the app's package.json is used for Node dependencies. The React frontend can live inside a frontend directory within the Frappe app.
+
+For development, use Vite to proxy requests to the Frappe site.
+
+For production, build the React frontend and serve the generated assets through the Frappe app/public or the chosen Frappe frontend integration strategy.
+
+17. RECOMMENDED DEVELOPMENT ORDER
+
+Phase 1:
+- Frappe app
+- React + Vite + TypeScript
+- Frappe React SDK
+- MUI theme
+- App layout
+- Authentication
+- Routing
+
+Phase 2:
+- Redux
+- Permissions
+- Common components
+- Responsive sidebar/topbar
+- Toast system
+- Error/loading states
+
+Phase 3:
+- Dashboard
+- KPI cards
+- Charts
+- Global filters
+
+Phase 4:
+- Reusable DataGrid
+- Stock Balance
+- Stock Ledger
+- Sales/Purchase reports
+- Accounting reports
+
+Phase 5:
+- Export
+- Print/PDF
+- Notifications
+- Realtime updates
+- Advanced filters
+- User preferences
+
+FINAL RECOMMENDATION
+
+For your requirement, the strongest baseline is:
+
+React + TypeScript + Vite
+        +
+Frappe React SDK
+        +
+MUI
+        +
+MUI Data Grid
+        +
+Recharts
+        +
+Redux Toolkit
+        +
+React Router
+        +
+React Hook Form + Zod
+        +
+React Hot Toast
+        +
+Day.js
+
+This gives you a modern ERP-style frontend without unnecessarily adding too many libraries.

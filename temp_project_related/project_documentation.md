@@ -32,6 +32,7 @@ To achieve a streamlined process that affects both inventory and accounting simu
    - **Document:** Purchase Invoice
    - **Key Action:** Check the **"Update Stock"** checkbox before submitting.
    - **Result:** Increases inventory (Stock Ledger) and increases outstanding payable to the Supplier (Accounts Payable) simultaneously.
+   - **Follow-up Action:** Since goods received are already paid for, immediately click **Create > Payment** from the submitted Purchase Invoice to generate a Payment Entry and clear the supplier's outstanding balance.
 
 2. **Doing Sales (Selling)**
    - **Document:** Sales Invoice
