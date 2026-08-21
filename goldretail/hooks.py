@@ -252,3 +252,14 @@ after_migrate = "goldretail.customizations.sync.sync_all"
 doctype_js = {
     "Purchase Receipt": "customizations/purchase_receipt/purchase_receipt.js"
 }
+
+doc_events = {
+    "Purchase Invoice": {
+        "on_submit": "goldretail.api.payments.payment_allocator.auto_pay_purchase_invoice"
+    }
+}
+
+website_route_rules = [
+    {"from_route": "/frontend/<path:app_path>", "to_route": "frontend"},
+    {"from_route": "/frontend", "to_route": "frontend"}
+]
