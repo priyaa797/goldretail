@@ -250,7 +250,8 @@ app_license = "mit"
 after_migrate = "goldretail.customizations.sync.sync_all"
 
 doctype_js = {
-    "Purchase Receipt": "customizations/purchase_receipt/purchase_receipt.js"
+    "Purchase Receipt": "customizations/purchase_receipt/purchase_receipt.js",
+    "Item": "public/js/item.js"
 }
 
 doc_events = {
