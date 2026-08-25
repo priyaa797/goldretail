@@ -57,6 +57,20 @@ export const getAppTheme = (mode, colorVariant) => {
           },
         },
       },
+      MuiTextField: {
+        styleOverrides: {
+          root: {
+            minWidth: 280,
+          },
+        },
+      },
+      MuiFormControl: {
+        styleOverrides: {
+          root: {
+            minWidth: 280,
+          },
+        },
+      },
       MuiCard: {
         styleOverrides: {
           root: {

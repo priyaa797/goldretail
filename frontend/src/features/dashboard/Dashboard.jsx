@@ -60,7 +60,14 @@ export default function Dashboard() {
             <CardContent sx={{ p: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <Box>
                 <Typography color="text.secondary" fontWeight="600" gutterBottom>Pending Receivables</Typography>
-                <Typography variant="h3" fontWeight="bold">View GL</Typography>
+                <Typography 
+                  variant="h3" 
+                  fontWeight="bold" 
+                  sx={{ cursor: 'pointer', color: 'primary.main', '&:hover': { textDecoration: 'underline' } }}
+                  onClick={() => navigate('/reports/customer-outstanding')}
+                >
+                  View GL
+                </Typography>
               </Box>
               <Box sx={{ p: 2, borderRadius: '50%', bgcolor: (theme) => theme.palette.mode === 'light' ? 'rgba(255, 193, 7, 0.16)' : 'rgba(255, 193, 7, 0.08)', color: '#FFC107' }}>
                 <CreditCard size={32} />

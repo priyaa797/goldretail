@@ -20,7 +20,6 @@ export default function SalesList() {
       field: 'posting_date', 
       headerName: 'Date', 
       width: 150,
-      valueGetter: (params) => params.row?.posting_date,
       valueFormatter: (value) => value ? dayjs(value).format('DD MMM YYYY') : '' 
     },
     { field: 'grand_total', headerName: 'Total (₹)', width: 120 },

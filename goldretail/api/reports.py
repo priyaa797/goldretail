@@ -1,13 +1,15 @@
 import frappe
 
 @frappe.whitelist()
-def get_stock_balance(warehouse=None, item=None):
+def get_stock_balance(warehouse=None, item=None, show_zero_balance=0):
     """
     Returns a list of items with their available qty, in qty, out qty, item name, and image.
     Aggregates data from Bin and Stock Ledger Entry.
     """
     
-    filters = [["actual_qty", ">", 0]]
+    filters = []
+    if not frappe.utils.cint(show_zero_balance):
+        filters.append(["actual_qty", ">", 0])
     if warehouse:
         filters.append(["warehouse", "=", warehouse])
     if item:
@@ -27,7 +29,7 @@ def get_stock_balance(warehouse=None, item=None):
     item_codes = [b.item_code for b in bins]
     items = frappe.get_all(
         "Item",
-        fields=["name", "item_name", "image"],
+        fields=["name", "item_name", "description", "image"],
         filters=[["name", "in", item_codes]]
     )
     
@@ -63,6 +65,7 @@ def get_stock_balance(warehouse=None, item=None):
             "id": key,
             "item_code": b.item_code,
             "item_name": itm.get("item_name") or b.item_code,
+            "description": itm.get("description") or "",
             "image": itm.get("image") or "",
             "warehouse": b.warehouse,
             "actual_qty": b.actual_qty,
