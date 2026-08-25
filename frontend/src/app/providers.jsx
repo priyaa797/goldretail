@@ -11,7 +11,7 @@ export function AppProviders({ children }) {
       <ThemeEngine>
         <FrappeProvider 
           url={import.meta.env.DEV ? 'http://newgoldmfg.com:8000' : ''} 
-          enableSocket={false}
+          enableSocket={true}
         >
           <BrowserRouter basename="/frontend">
             {children}

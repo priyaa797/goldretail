@@ -5,3 +5,5 @@
 tags
 node_modules
 __pycache__
+goldretail/www/
+goldretail/public/frontend/

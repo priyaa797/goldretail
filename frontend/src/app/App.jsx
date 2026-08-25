@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useFrappeAuth } from 'frappe-react-sdk';
 import { Box, CircularProgress } from '@mui/material';
+import SystemDownOverlay from '../components/SystemDownOverlay';
 
 // We will create these shortly
 import AppLayout from '../components/layout/AppLayout';
@@ -37,26 +38,29 @@ const ProtectedRoute = () => {
 
 export default function App() {
   return (
-    <Routes>
-      <Route element={<AuthLayout />}>
-        <Route path="/login" element={<Login />} />
-      </Route>
-
-      <Route element={<ProtectedRoute />}>
-        <Route element={<AppLayout />}>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/purchase" element={<PurchaseList />} />
-          <Route path="/purchase/new" element={<PurchaseForm />} />
-          <Route path="/purchase/:id" element={<PurchaseDetails />} />
-          <Route path="/sales" element={<SalesList />} />
-          <Route path="/sales/new" element={<SalesForm />} />
-          <Route path="/sales/:id" element={<SalesDetails />} />
-          <Route path="/payment" element={<PaymentScreen />} />
-          <Route path="/reports/stock-balance" element={<StockBalance />} />
-          <Route path="/reports/customer-outstanding" element={<CustomerOutstanding />} />
-          <Route path="/settings" element={<Settings />} />
+    <>
+      <SystemDownOverlay />
+      <Routes>
+        <Route element={<AuthLayout />}>
+          <Route path="/login" element={<Login />} />
         </Route>
-      </Route>
-    </Routes>
+
+        <Route element={<ProtectedRoute />}>
+          <Route element={<AppLayout />}>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/purchase" element={<PurchaseList />} />
+            <Route path="/purchase/new" element={<PurchaseForm />} />
+            <Route path="/purchase/:id" element={<PurchaseDetails />} />
+            <Route path="/sales" element={<SalesList />} />
+            <Route path="/sales/new" element={<SalesForm />} />
+            <Route path="/sales/:id" element={<SalesDetails />} />
+            <Route path="/payment" element={<PaymentScreen />} />
+            <Route path="/reports/stock-balance" element={<StockBalance />} />
+            <Route path="/reports/customer-outstanding" element={<CustomerOutstanding />} />
+            <Route path="/settings" element={<Settings />} />
+          </Route>
+        </Route>
+      </Routes>
+    </>
   );
 }
