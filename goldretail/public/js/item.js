@@ -59,5 +59,23 @@ frappe.ui.form.on('Item', {
                 }).addClass('btn-primary'); // Make it stand out
             }
         });
+
+        if (!frm.is_new()) {
+            frm.add_custom_button(__('Generate Barcode'), function() {
+                frappe.call({
+                    method: 'goldretail.api.item_barcode.generate_barcode',
+                    args: {
+                        item_code: frm.doc.item_code
+                    },
+                    freeze: true,
+                    callback: function(r) {
+                        if (r.message) {
+                            frappe.msgprint(__('Generated new barcode: ' + r.message));
+                            frm.reload_doc();
+                        }
+                    }
+                });
+            }, __('Actions'));
+        }
     }
 });

@@ -1,0 +1,10 @@
+[
+  {
+    "fieldname": "custom_barcode_image",
+    "label": "Barcode Image",
+    "fieldtype": "Attach Image",
+    "insert_after": "barcode",
+    "dt": "Item Barcode",
+    "module": "Gold Retail"
+  }
+]
