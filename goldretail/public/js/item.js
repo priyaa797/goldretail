@@ -70,7 +70,23 @@ frappe.ui.form.on('Item', {
                     freeze: true,
                     callback: function(r) {
                         if (r.message) {
-                            frappe.msgprint(__('Generated new barcode: ' + r.message));
+                            frappe.msgprint(__('Generated/Updated barcode: ' + r.message));
+                            frm.reload_doc();
+                        }
+                    }
+                });
+            }, __('Actions'));
+            
+            frm.add_custom_button(__('Generate QR Code'), function() {
+                frappe.call({
+                    method: 'goldretail.api.item_barcode.generate_qr',
+                    args: {
+                        item_code: frm.doc.item_code
+                    },
+                    freeze: true,
+                    callback: function(r) {
+                        if (r.message) {
+                            frappe.msgprint(__('Generated/Updated QR Code: ' + r.message));
                             frm.reload_doc();
                         }
                     }

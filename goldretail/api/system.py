@@ -35,3 +35,44 @@ def get_system_status():
     state['is_system_manager'] = is_system_manager
     
     return state
+
+@frappe.whitelist()
+def save_user_theme(theme_name):
+    if frappe.session.user == "Guest":
+        return {"status": "failed"}
+    
+    # Check if a User Settings record exists for this user
+    settings = frappe.get_all("User Settings", filters={"user": frappe.session.user}, limit=1)
+    if settings:
+        frappe.db.set_value("User Settings", settings[0].name, "theme", theme_name)
+    else:
+        doc = frappe.new_doc("User Settings")
+        doc.user = frappe.session.user
+        doc.theme = theme_name
+        doc.insert(ignore_permissions=True)
+        
+    return {"status": "success"}
+
+@frappe.whitelist(allow_guest=True)
+def get_user_theme():
+    if frappe.session.user == "Guest":
+        return None
+        
+    settings = frappe.get_all("User Settings", filters={"user": frappe.session.user}, fields=["theme"], limit=1)
+    if settings and settings[0].theme:
+        return settings[0].theme
+    return None
+
+@frappe.whitelist()
+def set_desk_theme(mode):
+    if frappe.session.user == "Guest":
+        return {"status": "failed"}
+    desk_theme = "Dark" if str(mode).lower() == "dark" else "Light"
+    frappe.db.set_value("User", frappe.session.user, "desk_theme", desk_theme)
+    return {"status": "success"}
+
+@frappe.whitelist(allow_guest=True)
+def get_desk_theme():
+    if frappe.session.user == "Guest":
+        return None
+    return frappe.db.get_value("User", frappe.session.user, "desk_theme")

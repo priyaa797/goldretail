@@ -87,3 +87,49 @@ def get_customer_outstanding():
         ORDER BY total_outstanding DESC
     """
     return frappe.db.sql(query, as_dict=True)
+
+@frappe.whitelist()
+def get_customer_balances():
+    """
+    Returns a list of all customers, their total pending amount, 
+    and details of their last payment.
+    """
+    query = """
+        SELECT 
+            c.name as customer,
+            COALESCE((SELECT SUM(outstanding_amount) FROM `tabSales Invoice` WHERE docstatus = 1 AND customer = c.name), 0) as total_outstanding,
+            (SELECT posting_date FROM `tabPayment Entry` WHERE docstatus = 1 AND party_type = 'Customer' AND party = c.name ORDER BY posting_date DESC, creation DESC LIMIT 1) as last_payment_date,
+            (SELECT paid_amount FROM `tabPayment Entry` WHERE docstatus = 1 AND party_type = 'Customer' AND party = c.name ORDER BY posting_date DESC, creation DESC LIMIT 1) as last_payment_amount
+        FROM `tabCustomer` c
+        ORDER BY total_outstanding DESC
+    """
+    return frappe.db.sql(query, as_dict=True)
+
+@frappe.whitelist()
+def get_customer_ledger(customer):
+    """
+    Returns a chronological ledger for a specific customer, combining
+    Sales Invoices (debits) and Payment Entries (credits).
+    """
+    query = """
+        SELECT 
+            posting_date as date, 
+            name as reference,
+            grand_total as invoice_amount, 
+            0 as payment_amount 
+        FROM `tabSales Invoice` 
+        WHERE docstatus = 1 AND customer = %s
+
+        UNION ALL
+
+        SELECT 
+            posting_date as date, 
+            name as reference,
+            0 as invoice_amount, 
+            paid_amount as payment_amount 
+        FROM `tabPayment Entry` 
+        WHERE docstatus = 1 AND party_type = 'Customer' AND party = %s
+
+        ORDER BY date ASC, reference ASC
+    """
+    return frappe.db.sql(query, (customer, customer), as_dict=True)
