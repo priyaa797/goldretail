@@ -31,7 +31,7 @@ export default function Login() {
   return (
     <Paper sx={{ p: 4, maxWidth: 400, width: '100%' }}>
       <Typography variant="h5" fontWeight="bold" gutterBottom>
-        Gold Retail
+        Perfect
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         Enter your details to sign in

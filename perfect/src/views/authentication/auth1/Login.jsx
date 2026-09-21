@@ -37,7 +37,7 @@ const Login = () => {
   };
 
   return (
-    <PageContainer title="Login" description="Login to Gold Retail">
+    <PageContainer title="Login" description="Login to Perfect">
       <Grid container spacing={0} sx={{ overflowX: 'hidden' }}>
         <Grid
           size={{ xs: 12, sm: 12, lg: 7, xl: 8 }}
@@ -89,7 +89,7 @@ const Login = () => {
         >
           <Box p={4}>
             <AuthLogin
-              title="Welcome to Gold Retail"
+              title="Welcome to Perfect"
               loading={loading}
               onSubmit={handleLogin}
               subtext={
