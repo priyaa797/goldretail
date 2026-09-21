@@ -10,6 +10,8 @@ import {
   IconButton,
 } from '@mui/material';
 import * as dropdownData from './data';
+import { useNavigate } from 'react-router';
+import { useFrappeAuth } from 'frappe-react-sdk';
 
 import { IconMail } from '@tabler/icons-react';
 import { Stack } from '@mui/system';
@@ -18,12 +20,19 @@ import ProfileImg from 'src/assets/images/profile/user-1.jpg';
 import unlimitedImg from 'src/assets/images/backgrounds/unlimited-bg.png';
 
 const Profile = () => {
+  const { logout } = useFrappeAuth();
+  const navigate = useNavigate();
   const [anchorEl2, setAnchorEl2] = useState(null);
   const handleClick2 = (event) => {
     setAnchorEl2(event.currentTarget);
   };
   const handleClose2 = () => {
     setAnchorEl2(null);
+  };
+  
+  const handleLogout = async () => {
+    await logout();
+    navigate('/auth/login');
   };
 
   return (
@@ -158,7 +167,7 @@ const Profile = () => {
               <img src={unlimitedImg} alt="unlimited" className="signup-bg"></img>
             </Box>
           </Box>
-          <Button to="/auth/login" variant="outlined" color="primary" component={Link} fullWidth>
+          <Button onClick={handleLogout} variant="outlined" color="primary" fullWidth>
             Logout
           </Button>
         </Box>

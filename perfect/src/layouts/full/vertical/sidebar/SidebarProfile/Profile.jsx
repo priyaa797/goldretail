@@ -3,12 +3,21 @@ import { Box, Avatar, Typography, IconButton, Tooltip, useMediaQuery } from '@mu
 import { useSelector } from 'react-redux';
 import img1 from 'src/assets/images/profile/user-1.jpg';
 import { IconPower } from '@tabler/icons-react';
-import { Link } from "react-router";
+import { useNavigate } from "react-router";
+import { useFrappeAuth } from 'frappe-react-sdk';
 
 export const Profile = () => {
+  const { logout } = useFrappeAuth();
+  const navigate = useNavigate();
   const customizer = useSelector((state) => state.customizer);
   const lgUp = useMediaQuery((theme) => theme.breakpoints.up('lg'));
   const hideMenu = lgUp ? customizer.isCollapse && !customizer.isSidebarHover : '';
+  
+  const handleLogout = async () => {
+    await logout();
+    navigate('/auth/login');
+  };
+  
   return (
     <Box
       display={'flex'}
@@ -26,7 +35,7 @@ export const Profile = () => {
           </Box>
           <Box sx={{ ml: 'auto' }}>
             <Tooltip title="Logout" placement="top">
-              <IconButton color="primary" component={Link} to="/auth/login" aria-label="logout" size="small">
+              <IconButton color="primary" onClick={handleLogout} aria-label="logout" size="small">
                 <IconPower size="20" />
               </IconButton>
             </Tooltip>
