@@ -12,13 +12,17 @@ export default function PurchaseForm() {
   const [items, setItems] = useState([{ item_code: '', qty: 1, rate: 0 }]);
 
   const { data: suppliers } = useFrappeGetDocList('Supplier', { fields: ['name'] });
-  const { data: itemList } = useFrappeGetDocList('Item', { fields: ['name', 'item_code', 'item_name', 'description'] });
+  const { data: itemList, mutate: mutateItemList } = useFrappeGetDocList('Item', { fields: ['name', 'item_code', 'item_name', 'description'] });
 
-
-  const { call } = useFrappePostCall('frappe.client.insert');
+  const { call: insertDoc } = useFrappePostCall('frappe.client.insert');
   const { call: getBarcodeItem } = useFrappePostCall('goldretail.api.item_barcode.get_item_by_barcode');
   const [barcodeInput, setBarcodeInput] = useState('');
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+
+  const [createItemModalOpen, setCreateItemModalOpen] = useState(false);
+  const [activeRowIndex, setActiveRowIndex] = useState(null);
+  const [newItemData, setNewItemData] = useState({ item_code: '', item_name: '' });
+  const [isCreatingItem, setIsCreatingItem] = useState(false);
 
 
 
@@ -86,7 +90,7 @@ export default function PurchaseForm() {
     };
 
     toast.promise(
-      call({ doc }),
+      insertDoc({ doc }),
       {
         loading: 'Saving Purchase Invoice...',
         success: (res) => {
@@ -105,6 +109,44 @@ export default function PurchaseForm() {
     if (!html) return '';
     const doc = new DOMParser().parseFromString(html, 'text/html');
     return doc.body.textContent || "";
+  };
+
+  const handleCreateItem = async () => {
+    try {
+      if (!newItemData.item_code || !newItemData.item_name) {
+        toast.error('Item Code and Name are required');
+        return;
+      }
+      setIsCreatingItem(true);
+
+      const itemDoc = {
+        doctype: 'Item',
+        item_code: newItemData.item_code,
+        item_name: newItemData.item_name,
+        item_group: 'Products',
+        gst_hsn_code: '999999',
+        is_stock_item: 1,
+      };
+
+      await insertDoc({ doc: itemDoc });
+
+      toast.success('Item created successfully');
+      await mutateItemList();
+
+      if (activeRowIndex !== null) {
+        const newItems = [...items];
+        newItems[activeRowIndex].item_code = newItemData.item_code;
+        newItems[activeRowIndex].item_name = newItemData.item_name;
+        newItems[activeRowIndex].description = '';
+        setItems(newItems);
+      }
+
+      setCreateItemModalOpen(false);
+    } catch (err) {
+      toast.error(err.message || 'Error creating item');
+    } finally {
+      setIsCreatingItem(false);
+    }
   };
 
   return (
@@ -168,10 +210,28 @@ export default function PurchaseForm() {
                 </TableCell>
                 <TableCell>
                   <Autocomplete
-                    options={itemList || []}
-                    getOptionLabel={(option) => option.item_code || ''}
+                    options={[...(itemList || []), { is_create_btn: true, item_code: '+ Create New Item' }]}
+                    getOptionLabel={(option) => option?.item_code || ''}
                     value={itemList?.find(i => i.item_code === item.item_code) || null}
+                    renderOption={(props, option) => {
+                      const { key, ...restProps } = props;
+                      if (option.is_create_btn) {
+                        return (
+                          <li key={key} {...restProps} style={{ color: '#007bff', fontWeight: 'bold', justifyContent: 'center' }}>
+                            {option.item_code}
+                          </li>
+                        );
+                      }
+                      return <li key={key} {...restProps}>{option.item_code} - {option.item_name}</li>;
+                    }}
                     onChange={(e, newValue) => {
+                      if (newValue?.is_create_btn) {
+                        setNewItemData({ item_code: '', item_name: '' });
+                        setActiveRowIndex(idx);
+                        setCreateItemModalOpen(true);
+                        return;
+                      }
+
                       if (newValue) {
                         const existingIndex = items.findIndex((i, index) => i.item_code === newValue.item_code && index !== idx);
                         if (existingIndex >= 0) {
@@ -179,7 +239,7 @@ export default function PurchaseForm() {
                           return;
                         }
                       }
-                      
+
                       const newItems = [...items];
                       if (newValue) {
                         newItems[idx].item_code = newValue.item_code;
@@ -254,6 +314,26 @@ export default function PurchaseForm() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setIsScannerOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={createItemModalOpen} onClose={() => !isCreatingItem && setCreateItemModalOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Create New Item</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12} sm={6}>
+              <TextField fullWidth label="Item Code" size="small" value={newItemData.item_code} onChange={e => setNewItemData({ ...newItemData, item_code: e.target.value })} disabled={isCreatingItem} />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField fullWidth label="Item Name" size="small" value={newItemData.item_name} onChange={e => setNewItemData({ ...newItemData, item_name: e.target.value })} disabled={isCreatingItem} />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCreateItemModalOpen(false)} disabled={isCreatingItem}>Cancel</Button>
+          <Button variant="contained" onClick={handleCreateItem} disabled={isCreatingItem}>
+            {isCreatingItem ? 'Saving...' : 'Save Item'}
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
