@@ -9,11 +9,41 @@ import { Html5QrcodeScanner } from 'html5-qrcode';
 export default function SalesForm() {
   const navigate = useNavigate();
   const [customer, setCustomer] = useState('');
+  const [priceList, setPriceList] = useState('Wholesale');
   const [items, setItems] = useState([{ item_code: '', qty: 1, rate: 0, user_rate: '' }]);
 
-  const { data: customers } = useFrappeGetDocList('Customer', { fields: ['name'] });
-  const { data: itemList } = useFrappeGetDocList('Item', { fields: ['name', 'item_code', 'item_name', 'description', 'standard_rate'] });
+  const { data: customers } = useFrappeGetDocList('Customer', { fields: ['name', 'customer_group', 'default_price_list'], limit: 10000 });
+  const { data: customerGroups } = useFrappeGetDocList('Customer Group', { fields: ['name', 'default_price_list'], limit: 1000 });
+  const { data: itemList } = useFrappeGetDocList('Item', { fields: ['name', 'item_code', 'item_name', 'description', 'standard_rate'], limit: 100000 });
 
+  const { data: itemPrices } = useFrappeGetDocList('Item Price', {
+    fields: ['item_code', 'price_list_rate'],
+    filters: [['price_list', '=', priceList]],
+    limit: 100000
+  });
+
+  const getPrice = (itemCode) => {
+    const priceDoc = itemPrices?.find(p => p.item_code === itemCode);
+    return priceDoc ? priceDoc.price_list_rate : 0;
+  };
+
+  useEffect(() => {
+    if (!itemPrices) return;
+    setItems(prevItems => {
+      let needsUpdate = false;
+      const newItems = prevItems.map(item => {
+        if (!item.item_code) return item;
+        const priceDoc = itemPrices.find(p => p.item_code === item.item_code);
+        const newRate = priceDoc ? priceDoc.price_list_rate : item.rate;
+        if (newRate !== item.rate) {
+          needsUpdate = true;
+          return { ...item, rate: newRate };
+        }
+        return item;
+      });
+      return needsUpdate ? newItems : prevItems;
+    });
+  }, [itemPrices]);
 
   const { call } = useFrappePostCall('frappe.client.insert');
   const { call: getBarcodeItem } = useFrappePostCall('goldretail.api.item_barcode.get_item_by_barcode');
@@ -40,7 +70,7 @@ export default function SalesForm() {
             item_name: fullItem?.item_name || itemData.item_name || '',
             description: fullItem?.description || itemData.description || '',
             qty: 1,
-            rate: fullItem?.standard_rate || itemData.standard_rate || 0,
+            rate: getPrice(itemData.item_code) || fullItem?.standard_rate || itemData.standard_rate || 0,
             user_rate: ''
           };
 
@@ -81,6 +111,7 @@ export default function SalesForm() {
     const doc = {
       doctype: 'Sales Invoice',
       customer,
+      selling_price_list: priceList,
       items: items.map(i => ({ item_code: i.item_code, qty: Number(i.qty) || 0, rate: Number(i.user_rate) || Number(i.rate) || 0 })),
       update_stock: 1, // Crucial for our simplified workflow
       docstatus: 1 // Try to submit immediately
@@ -94,7 +125,24 @@ export default function SalesForm() {
           navigate('/sales');
           return `Sales ${res.message.name} submitted successfully!`;
         },
-        error: (err) => err.message || 'Error saving sales'
+        error: (err) => {
+          let errorMsg = 'Error saving sales';
+          if (err._server_messages) {
+            try {
+              const messages = JSON.parse(err._server_messages);
+              const lastMsg = JSON.parse(messages[messages.length - 1]);
+              if (lastMsg.message) {
+                const doc = new DOMParser().parseFromString(lastMsg.message, 'text/html');
+                errorMsg = doc.body.textContent || doc.body.innerText || errorMsg;
+              }
+            } catch (e) {
+              errorMsg = err.message || errorMsg;
+            }
+          } else if (err.message) {
+            errorMsg = err.message;
+          }
+          return errorMsg;
+        }
       }
     );
   };
@@ -123,9 +171,37 @@ export default function SalesForm() {
               fullWidth
               label="Customer"
               value={customer}
-              onChange={e => setCustomer(e.target.value)}
+              onChange={e => {
+                const val = e.target.value;
+                setCustomer(val);
+                const selectedCust = customers?.find(c => c.name === val);
+                if (selectedCust) {
+                  let pl = selectedCust.default_price_list;
+                  if (!pl && selectedCust.customer_group) {
+                    const group = customerGroups?.find(g => g.name === selectedCust.customer_group);
+                    if (group && group.default_price_list) {
+                      pl = group.default_price_list;
+                    }
+                  }
+                  if (pl) {
+                    setPriceList(pl);
+                  }
+                }
+              }}
             >
               {customers?.map(s => <MenuItem key={s.name} value={s.name}>{s.name}</MenuItem>)}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <TextField
+              select
+              fullWidth
+              label="Price List"
+              value={priceList}
+              onChange={e => setPriceList(e.target.value)}
+            >
+              <MenuItem value="Wholesale">Wholesale</MenuItem>
+              <MenuItem value="Retail">Retail</MenuItem>
             </TextField>
           </Grid>
         </Grid>
@@ -187,7 +263,7 @@ export default function SalesForm() {
                         newItems[idx].item_code = newValue.item_code;
                         newItems[idx].item_name = newValue.item_name;
                         newItems[idx].description = newValue.description;
-                        newItems[idx].rate = newValue.standard_rate || 0;
+                        newItems[idx].rate = getPrice(newValue.item_code) || newValue.standard_rate || 0;
                         newItems[idx].user_rate = '';
                       } else {
                         newItems[idx].item_code = '';

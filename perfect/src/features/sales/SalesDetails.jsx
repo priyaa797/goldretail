@@ -60,6 +60,10 @@ export default function SalesDetails() {
               <Typography variant="body2" color="text.secondary">Due Date</Typography>
               <Typography variant="body2" fontWeight="500">{dayjs(doc.due_date).format('DD MMM YYYY')}</Typography>
             </Box>
+            <Box display="flex" justifyContent="space-between" mb={1}>
+              <Typography variant="body2" color="text.secondary">Price List</Typography>
+              <Typography variant="body2" fontWeight="500">{doc.selling_price_list || '-'}</Typography>
+            </Box>
           </Paper>
         </Grid>
       </Grid>

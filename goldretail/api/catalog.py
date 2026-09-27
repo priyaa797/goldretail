@@ -2,13 +2,18 @@ import frappe
 import json
 
 @frappe.whitelist()
-def generate_pdf(item_codes):
+def generate_pdf(item_codes, price_list="Wholesale"):
     if isinstance(item_codes, str):
         item_codes = json.loads(item_codes)
         
     items = frappe.get_all("Item", 
                            filters={"item_code": ["in", item_codes]}, 
                            fields=["item_code", "item_name", "description", "image"])
+                           
+    prices = frappe.get_all("Item Price",
+                            filters={"item_code": ["in", item_codes], "price_list": price_list},
+                            fields=["item_code", "price_list_rate"])
+    price_map = {p.item_code: p.price_list_rate for p in prices}
     
     # Sort items by the order they were provided
     item_dict = {item.item_code: item for item in items}
@@ -111,13 +116,19 @@ def generate_pdf(item_codes):
                 # Strip HTML from description
                 desc = frappe.utils.strip_html_tags(desc)
                 
+                price = price_map.get(item.item_code)
+                price_str = f' <span style="color: red; font-size: 12px;">NP {int(price)}</span>' if price else ""
+                
                 html += f"""
                 <td>
                     <img src="{img_src}" class="item-image" alt="No Image" onerror="this.style.display='none'">
                     <div class="title-line">
                         <span class="item-code">{item.item_code}</span> <span class="item-name">{item.item_name}</span>
                     </div>
-                    <div class="item-desc">{desc}</div>
+                    <div class="item-desc">{desc}
+                    <br/>
+                    {price_str}
+                    </div>
                 </td>
                 """
                 

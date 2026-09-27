@@ -16,6 +16,7 @@ export default function Catalog() {
   const [category, setCategory] = useState(null);
   const [subCategory, setSubCategory] = useState(null);
   const [showZeroStock, setShowZeroStock] = useState(false);
+  const [priceList, setPriceList] = useState('Wholesale');
 
   const { data: categories } = useFrappeGetDocList('Item Category', { fields: ['name'], limit: 1000 });
   const { data: subCategories } = useFrappeGetDocList('Item Sub Category', { fields: ['name'], limit: 1000 });
@@ -79,7 +80,7 @@ export default function Catalog() {
     }
 
     toast.promise(
-      generatePdfCall({ item_codes: selectedItems }),
+      generatePdfCall({ item_codes: selectedItems, price_list: priceList }),
       {
         loading: 'Generating PDF Catalogue...',
         success: (res) => {
@@ -129,7 +130,7 @@ export default function Catalog() {
       {/* Filters Section */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={12} sm={3}>
             <Autocomplete
               options={categories?.map(c => c.name) || []}
               value={category}
@@ -137,7 +138,7 @@ export default function Catalog() {
               renderInput={(params) => <TextField {...params} label="Category" size="small" />}
             />
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={12} sm={3}>
             <Autocomplete
               options={subCategories?.map(s => s.name) || []}
               value={subCategory}
@@ -145,7 +146,16 @@ export default function Catalog() {
               renderInput={(params) => <TextField {...params} label="Sub Category" size="small" />}
             />
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={12} sm={3}>
+            <Autocomplete
+              options={['Wholesale', 'Retail']}
+              value={priceList}
+              onChange={(e, val) => setPriceList(val || 'Wholesale')}
+              disableClearable
+              renderInput={(params) => <TextField {...params} label="Price List" size="small" />}
+            />
+          </Grid>
+          <Grid item xs={12} sm={3}>
             <FormControlLabel
               control={
                 <Checkbox
