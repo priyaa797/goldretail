@@ -45,6 +45,9 @@ const RevenueUpdates = () => {
       height: 370,
       stacked: true,
     },
+    theme: {
+      mode: theme.palette.mode === 'dark' ? 'dark' : 'light',
+    },
     colors: [primary, theme.palette.warning.main, theme.palette.error.light, secondary],
     plotOptions: {
       bar: {
