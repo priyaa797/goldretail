@@ -13,12 +13,15 @@ export default function ItemForm() {
     item_group: '',
     category: '',
     sub_category: '',
-    type: ''
+    type: '',
+    wholesale_price: '',
+    retail_price: ''
   });
-  
+
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pricesInitialized, setPricesInitialized] = useState(false);
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -36,7 +39,8 @@ export default function ItemForm() {
         return doc.body.textContent || "";
       };
 
-      setFormData({
+      setFormData(prev => ({
+        ...prev,
         item_code: existingItem.item_code || '',
         item_name: existingItem.item_name || '',
         description: stripHtml(existingItem.description) || '',
@@ -44,20 +48,39 @@ export default function ItemForm() {
         category: existingItem.category || '',
         sub_category: existingItem.sub_category || '',
         type: existingItem.type || ''
-      });
+      }));
       if (existingItem.image) {
         setImagePreview(existingItem.image);
       }
     }
   }, [existingItem, isEditMode]);
 
-  // Fetch Link Options
   const { data: itemGroups } = useFrappeGetDocList('Item Group', { fields: ['name'], limit: 1000 });
   const { data: categories } = useFrappeGetDocList('Item Category', { fields: ['name'], limit: 1000 });
   const { data: subCategories } = useFrappeGetDocList('Item Sub Category', { fields: ['name'], limit: 1000 });
   const { data: itemTypes } = useFrappeGetDocList('Item Type', { fields: ['name'], limit: 1000 });
 
+  const { data: itemPrices } = useFrappeGetDocList('Item Price', {
+    fields: ['price_list', 'price_list_rate'],
+    filters: [['item_code', '=', id || '']],
+    limit: 10
+  });
+
+  React.useEffect(() => {
+    if (isEditMode && itemPrices && !pricesInitialized) {
+      const wp = itemPrices.find(p => p.price_list === 'Wholesale')?.price_list_rate || '';
+      const rp = itemPrices.find(p => p.price_list === 'Retail')?.price_list_rate || '';
+      setFormData(prev => ({
+        ...prev,
+        wholesale_price: wp,
+        retail_price: rp
+      }));
+      setPricesInitialized(true);
+    }
+  }, [itemPrices, isEditMode, pricesInitialized]);
+
   const { call: insertDoc } = useFrappePostCall('frappe.client.insert');
+  const { call: setPriceCall } = useFrappePostCall('goldretail.api.item_price.set_item_price');
   const { updateDoc } = useFrappeUpdateDoc();
 
   const handleInputChange = (field, value) => {
@@ -84,15 +107,18 @@ export default function ItemForm() {
       item_group: '',
       category: '',
       sub_category: '',
-      type: ''
+      type: '',
+      wholesale_price: '',
+      retail_price: ''
     });
     setImageFile(null);
     setImagePreview('');
+    setPricesInitialized(false);
   };
 
   const uploadImage = async () => {
     if (!imageFile) return null;
-    
+
     const data = new FormData();
     data.append('file', imageFile, imageFile.name);
     data.append('is_private', 0);
@@ -140,12 +166,41 @@ export default function ItemForm() {
         sub_category: formData.sub_category,
         type: formData.type,
       };
-      
+
       if (imageUrl) docParams.image = imageUrl;
+
+      const savePrices = async (itemCode) => {
+        const uom = existingItem?.stock_uom || 'Nos';
+        if (formData.wholesale_price && parseFloat(formData.wholesale_price) > 0) {
+          try {
+            await setPriceCall({
+              item_code: itemCode,
+              amount: formData.wholesale_price,
+              uom: uom,
+              price_list: 'Wholesale'
+            });
+          } catch (e) {
+            console.error("Failed to set wholesale price", e);
+          }
+        }
+        if (formData.retail_price && parseFloat(formData.retail_price) > 0) {
+          try {
+            await setPriceCall({
+              item_code: itemCode,
+              amount: formData.retail_price,
+              uom: uom,
+              price_list: 'Retail'
+            });
+          } catch (e) {
+            console.error("Failed to set retail price", e);
+          }
+        }
+      };
 
       if (isEditMode) {
         toast.loading('Updating item in Frappe...', { id: toastId });
         await updateDoc('Item', id, docParams);
+        await savePrices(id);
         toast.success(`Item ${id} updated successfully!`, { id: toastId });
         navigate(`/master/item/${encodeURIComponent(id)}`);
       } else {
@@ -158,11 +213,12 @@ export default function ItemForm() {
           is_stock_item: 1,
         };
         const res = await insertDoc({ doc });
+        await savePrices(res.message.name);
         toast.success(`Item ${res.message.name} created successfully!`, { id: toastId });
         clearForm();
         navigate(`/master/item/${encodeURIComponent(res.message.name)}`);
       }
-      
+
     } catch (err) {
       toast.error(err.message || 'Error saving item', { id: toastId });
     } finally {
@@ -181,9 +237,9 @@ export default function ItemForm() {
             {isEditMode ? `Edit Item: ${id}` : 'New Item Master'}
           </Typography>
         </Box>
-        <Button 
-          variant="contained" 
-          startIcon={<Save size={18} />} 
+        <Button
+          variant="contained"
+          startIcon={<Save size={18} />}
           onClick={handleSave}
           disabled={isSubmitting || isLoadingExisting}
         >
@@ -196,26 +252,26 @@ export default function ItemForm() {
         <Grid item xs={12} md={8}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" mb={3}>Basic Information</Typography>
-            
+
             <Grid container spacing={3}>
               <Grid item xs={12} sm={6}>
-                <TextField 
-                  fullWidth 
-                  label="Item Code *" 
+                <TextField
+                  fullWidth
+                  label="Item Code *"
                   value={formData.item_code}
                   disabled={isEditMode}
                   onChange={(e) => handleInputChange('item_code', e.target.value)}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField 
-                  fullWidth 
-                  label="Item Name *" 
+                <TextField
+                  fullWidth
+                  label="Item Name *"
                   value={formData.item_name}
                   onChange={(e) => handleInputChange('item_name', e.target.value)}
                 />
               </Grid>
-              
+
               <Grid item xs={12} sm={6}>
                 <Autocomplete
                   options={itemGroups?.map(g => g.name) || []}
@@ -251,11 +307,11 @@ export default function ItemForm() {
               </Grid>
 
               <Grid item xs={12}>
-                <TextField 
-                  fullWidth 
-                  multiline 
+                <TextField
+                  fullWidth
+                  multiline
                   rows={4}
-                  label="Description" 
+                  label="Description"
                   value={formData.description}
                   onChange={(e) => handleInputChange('description', e.target.value)}
                 />
@@ -268,13 +324,13 @@ export default function ItemForm() {
         <Grid item xs={12} md={4}>
           <Paper sx={{ p: 3, mb: 3 }}>
             <Typography variant="h6" mb={2}>Item Image</Typography>
-            
-            <Box 
-              sx={{ 
-                border: '2px dashed', 
-                borderColor: 'divider', 
-                borderRadius: 2, 
-                p: 2, 
+
+            <Box
+              sx={{
+                border: '2px dashed',
+                borderColor: 'divider',
+                borderRadius: 2,
+                p: 2,
                 textAlign: 'center',
                 position: 'relative',
                 minHeight: 200,
@@ -287,7 +343,7 @@ export default function ItemForm() {
               {imagePreview ? (
                 <>
                   <img src={imagePreview} alt="Preview" style={{ maxWidth: '100%', maxHeight: 200, objectFit: 'contain' }} />
-                  <IconButton 
+                  <IconButton
                     size="small"
                     color="error"
                     sx={{ position: 'absolute', top: 8, right: 8, bgcolor: 'background.paper', '&:hover': { bgcolor: 'background.paper' } }}
@@ -323,6 +379,37 @@ export default function ItemForm() {
                 <Typography variant="body2" color="text.secondary">GST HSN Code:</Typography>
                 <Typography variant="body2" fontWeight="bold">999999</Typography>
               </Box>
+            </Box>
+          </Paper>
+
+
+          <Paper sx={{ p: 3, mt: 3 }}>
+            <Typography variant="h6" mb={2}>Pricing</Typography>
+            <Box display="flex" flexDirection="column" gap={2}>
+              <TextField 
+                label="Wholesale Price" 
+                type="number"
+                fullWidth 
+                size="small"
+                value={formData.wholesale_price || ''}
+                onChange={e => handleInputChange('wholesale_price', e.target.value)}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                  sx: { color: 'warning.main', fontWeight: 'bold' }
+                }}
+              />
+              <TextField 
+                label="Retail Price" 
+                type="number"
+                fullWidth 
+                size="small"
+                value={formData.retail_price || ''}
+                onChange={e => handleInputChange('retail_price', e.target.value)}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                  sx: { color: 'success.main', fontWeight: 'bold' }
+                }}
+              />
             </Box>
           </Paper>
         </Grid>

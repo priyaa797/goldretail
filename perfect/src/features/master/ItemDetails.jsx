@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Button, Typography, Paper, Grid, Avatar, Divider, Chip } from '@mui/material';
-import { useFrappeGetDoc } from 'frappe-react-sdk';
+import { useFrappeGetDoc, useFrappeGetDocList } from 'frappe-react-sdk';
 import { Edit2, ArrowLeft } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router';
 import Spinner from '../../views/spinner/Spinner';
@@ -10,6 +10,15 @@ export default function ItemDetails() {
   const navigate = useNavigate();
 
   const { data: item, isLoading, error } = useFrappeGetDoc('Item', id);
+
+  const { data: itemPrices } = useFrappeGetDocList('Item Price', {
+    fields: ['price_list', 'price_list_rate'],
+    filters: [['item_code', '=', id]],
+    limit: 10
+  });
+
+  const wholesalePrice = itemPrices?.find(p => p.price_list === 'Wholesale')?.price_list_rate;
+  const retailPrice = itemPrices?.find(p => p.price_list === 'Retail')?.price_list_rate;
 
   if (isLoading) return <Spinner />;
   if (error) return <Typography color="error">Error loading item details.</Typography>;
@@ -112,6 +121,25 @@ export default function ItemDetails() {
               <Box display="flex" justifyContent="space-between">
                 <Typography variant="body2" color="text.secondary">GST HSN Code:</Typography>
                 <Typography variant="body2" fontWeight="bold">{item.gst_hsn_code || '-'}</Typography>
+              </Box>
+            </Box>
+          </Paper>
+
+          <Paper sx={{ p: 3, mt: 3 }}>
+            <Typography variant="h6" mb={2}>Pricing</Typography>
+            <Divider sx={{ mb: 2 }} />
+            <Box display="flex" flexDirection="column" gap={2}>
+              <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Typography variant="body2" color="text.secondary">Wholesale Price:</Typography>
+                <Typography variant="body2" fontWeight="bold" color="warning.main">
+                  {wholesalePrice ? `₹ ${wholesalePrice}` : 'Not Set'}
+                </Typography>
+              </Box>
+              <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Typography variant="body2" color="text.secondary">Retail Price:</Typography>
+                <Typography variant="body2" fontWeight="bold" color="success.main">
+                  {retailPrice ? `₹ ${retailPrice}` : 'Not Set'}
+                </Typography>
               </Box>
             </Box>
           </Paper>
