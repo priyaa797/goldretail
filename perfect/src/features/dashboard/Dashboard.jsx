@@ -17,7 +17,7 @@ import iconPayables from 'src/assets/images/svgs/icon-master-card.svg';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  
+
   // Data Fetching
   const { data: recentSales } = useFrappeGetDocList('Sales Invoice', {
     fields: ['name', 'customer', 'grand_total', 'posting_date'],
@@ -33,13 +33,13 @@ export default function Dashboard() {
 
   const { data: pendingReceivables } = useFrappeGetDocList('Sales Invoice', {
     fields: ['name', 'outstanding_amount'],
-    filters: [['outstanding_amount', '>', 0]],
+    filters: [['outstanding_amount', '>', 0], ['docstatus', '=', 1]],
     limit: 100,
   });
 
   const { data: pendingPayables } = useFrappeGetDocList('Purchase Invoice', {
     fields: ['name', 'outstanding_amount'],
-    filters: [['outstanding_amount', '>', 0]],
+    filters: [['outstanding_amount', '>', 0], ['docstatus', '=', 1]],
     limit: 100,
   });
 
@@ -107,8 +107,8 @@ export default function Dashboard() {
 
         {/* Recent Sales Table */}
         <Grid size={{ xs: 12, lg: 6 }}>
-          <TopPerformers 
-            title="Recent Sales" 
+          <TopPerformers
+            title="Recent Sales"
             subtitle="Latest 5 transactions"
             columns={salesColumns}
             rows={recentSales || []}
@@ -117,8 +117,8 @@ export default function Dashboard() {
 
         {/* Recent Purchases Table */}
         <Grid size={{ xs: 12, lg: 6 }}>
-          <TopPerformers 
-            title="Recent Purchases" 
+          <TopPerformers
+            title="Recent Purchases"
             subtitle="Latest 5 transactions"
             columns={purchaseColumns}
             rows={recentPurchases || []}
