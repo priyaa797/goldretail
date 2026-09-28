@@ -10,7 +10,7 @@ export default function SalesForm() {
   const navigate = useNavigate();
   const [customer, setCustomer] = useState('');
   const [priceList, setPriceList] = useState('Wholesale');
-  const [items, setItems] = useState([{ item_code: '', qty: 1, rate: 0, user_rate: '' }]);
+  const [items, setItems] = useState([{ item_code: '', item_name: '', description: '', qty: '', rate: 0, user_rate: '', carton: '', packing: '', carton_weight: '', discount: '' }]);
 
   const { data: customers } = useFrappeGetDocList('Customer', { fields: ['name', 'customer_group', 'default_price_list'], limit: 10000 });
   const { data: customerGroups } = useFrappeGetDocList('Customer Group', { fields: ['name', 'default_price_list'], limit: 1000 });
@@ -69,7 +69,7 @@ export default function SalesForm() {
             item_code: itemData.item_code,
             item_name: fullItem?.item_name || itemData.item_name || '',
             description: fullItem?.description || itemData.description || '',
-            qty: 1,
+            qty: '',
             rate: getPrice(itemData.item_code) || fullItem?.standard_rate || itemData.standard_rate || 0,
             user_rate: ''
           };
@@ -112,7 +112,23 @@ export default function SalesForm() {
       doctype: 'Sales Invoice',
       customer,
       selling_price_list: priceList,
-      items: items.map(i => ({ item_code: i.item_code, qty: Number(i.qty) || 0, rate: Number(i.user_rate) || Number(i.rate) || 0 })),
+      items: items.map(i => {
+        const qty = Number(i.qty) || 0;
+        const baseRate = Number(i.user_rate) || Number(i.rate) || 0;
+        const discountAmt = Number(i.discount) || 0;
+        const grossAmount = qty * baseRate;
+        const discountPercentage = grossAmount > 0 ? (discountAmt / grossAmount) * 100 : 0;
+
+        return {
+          item_code: i.item_code,
+          qty: qty,
+          price_list_rate: baseRate,
+          discount_percentage: discountPercentage,
+          carton: Number(i.carton) || 0,
+          packing: Number(i.packing) || 0,
+          carton_weight: Number(i.carton_weight) || 0
+        };
+      }),
       update_stock: 1, // Crucial for our simplified workflow
       docstatus: 1 // Try to submit immediately
     };
@@ -147,7 +163,7 @@ export default function SalesForm() {
     );
   };
 
-  const addItem = () => setItems([...items, { item_code: '', item_name: '', description: '', qty: 1, rate: 0 }]);
+  const addItem = () => setItems([...items, { item_code: '', item_name: '', description: '', qty: '', rate: 0, user_rate: '', carton: '', packing: '', carton_weight: '', discount: '' }]);
   const removeItem = (index) => setItems(items.filter((_, i) => i !== index));
 
   const stripHtml = (html) => {
@@ -157,7 +173,7 @@ export default function SalesForm() {
   };
 
   return (
-    <Box>
+    <Box sx={{ width: '100%', maxWidth: '100%', minWidth: 0 }}>
       <Box display="flex" justifyContent="space-between" mb={3}>
         <Typography variant="h5" fontWeight="bold">New Sale</Typography>
         <Button variant="contained" startIcon={<Save size={18} />} onClick={handleSave}>Save & Submit</Button>
@@ -207,7 +223,7 @@ export default function SalesForm() {
         </Grid>
       </Paper>
 
-      <Paper sx={{ p: 3 }}>
+      <Paper sx={{ p: 3, maxWidth: '100%', overflowX: 'hidden' }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
           <Typography variant="h6">Items</Typography>
           <Box display="flex" gap={2}>
@@ -224,112 +240,173 @@ export default function SalesForm() {
             </Button>
           </Box>
         </Box>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell sx={{ width: 50 }}>S.No.</TableCell>
-              <TableCell sx={{ minWidth: 200 }}>Item Code</TableCell>
-              <TableCell sx={{ minWidth: 150 }}>Item Name</TableCell>
-              <TableCell sx={{ minWidth: 200 }}>Description</TableCell>
-              <TableCell sx={{ width: 120 }}>Quantity</TableCell>
-              <TableCell sx={{ width: 120 }}>Rate (System)</TableCell>
-              <TableCell sx={{ width: 120 }}>Rate (User)</TableCell>
-              <TableCell sx={{ width: 120 }}>Amount</TableCell>
-              <TableCell sx={{ width: 60 }}></TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {items.map((item, idx) => (
-              <TableRow key={idx}>
-                <TableCell>
-                  <Typography variant="body2" fontWeight="bold">{idx + 1}</Typography>
-                </TableCell>
-                <TableCell>
-                  <Autocomplete
-                    options={itemList || []}
-                    getOptionLabel={(option) => option.item_code || ''}
-                    value={itemList?.find(i => i.item_code === item.item_code) || null}
-                    onChange={(e, newValue) => {
-                      if (newValue) {
-                        const existingIndex = items.findIndex((i, index) => i.item_code === newValue.item_code && index !== idx);
-                        if (existingIndex >= 0) {
-                          toast.error(`Item ${newValue.item_code} has already been added in row ${existingIndex + 1}!`);
-                          return;
-                        }
-                      }
-                      
-                      const newItems = [...items];
-                      if (newValue) {
-                        newItems[idx].item_code = newValue.item_code;
-                        newItems[idx].item_name = newValue.item_name;
-                        newItems[idx].description = newValue.description;
-                        newItems[idx].rate = getPrice(newValue.item_code) || newValue.standard_rate || 0;
-                        newItems[idx].user_rate = '';
-                      } else {
-                        newItems[idx].item_code = '';
-                        newItems[idx].item_name = '';
-                        newItems[idx].description = '';
-                        newItems[idx].rate = 0;
-                        newItems[idx].user_rate = '';
-                      }
-                      setItems(newItems);
-                    }}
-                    renderInput={(params) => <TextField {...params} placeholder="Search Item..." variant="outlined" size="small" />}
-                  />
-                </TableCell>
-                <TableCell>
-                  <Typography variant="body2">{item.item_name || '-'}</Typography>
-                </TableCell>
-                <TableCell>
-                  <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 200 }} title={stripHtml(item.description)}>
-                    {stripHtml(item.description) || '-'}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <TextField
-                    size="small"
-                    value={item.qty}
-                    onChange={e => {
-                      const val = e.target.value;
-                      if (/^\d*\.?\d*$/.test(val)) {
-                        const newItems = [...items];
-                        newItems[idx].qty = val;
-                        setItems(newItems);
-                      }
-                    }}
-                  />
-                </TableCell>
-                <TableCell>
-                  <TextField
-                    size="small"
-                    value={item.rate}
-                    InputProps={{ readOnly: true }}
-                    sx={{ bgcolor: 'action.hover' }}
-                  />
-                </TableCell>
-                <TableCell>
-                  <TextField
-                    size="small"
-                    placeholder="Rate..."
-                    value={item.user_rate}
-                    onChange={e => {
-                      const val = e.target.value;
-                      if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                        const newItems = [...items];
-                        newItems[idx].user_rate = val;
-                        setItems(newItems);
-                      }
-                    }}
-                  />
-                </TableCell>
-                <TableCell>₹{(Number(item.qty) || 0) * (Number(item.user_rate) || Number(item.rate) || 0)}</TableCell>
-                <TableCell>
-                  <IconButton color="error" onClick={() => removeItem(idx)}><Trash2 size={18} /></IconButton>
-                </TableCell>
+        <Box sx={{ overflowX: 'auto', width: '100%' }}>
+          <Table sx={{ minWidth: 2200 }}>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ width: 60, minWidth: 60, position: 'sticky', left: 0, bgcolor: 'background.paper', zIndex: 2 }}>S.No.</TableCell>
+                <TableCell sx={{ width: 250, minWidth: 250, position: 'sticky', left: 60, bgcolor: 'background.paper', zIndex: 2, borderRight: '1px solid', borderColor: 'divider' }}>Item Code</TableCell>
+                <TableCell sx={{ minWidth: 150 }}>Item Name</TableCell>
+                <TableCell sx={{ minWidth: 200 }}>Description</TableCell>
+                <TableCell sx={{ width: 100 }}>Carton</TableCell>
+                <TableCell sx={{ width: 100 }}>Packing</TableCell>
+                <TableCell sx={{ width: 120 }}>Quantity</TableCell>
+                <TableCell sx={{ width: 120 }}>C. Wt.</TableCell>
+                <TableCell sx={{ width: 120 }}>Rate (System)</TableCell>
+                <TableCell sx={{ width: 120 }}>Rate (User)</TableCell>
+                <TableCell sx={{ width: 120 }}>Amount</TableCell>
+                <TableCell sx={{ width: 100 }}>Discount</TableCell>
+                <TableCell sx={{ width: 120 }}>Discount Amt</TableCell>
+                <TableCell sx={{ width: 120 }}>Net Amt</TableCell>
+                <TableCell sx={{ width: 60 }}></TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHead>
+            <TableBody>
+              {items.map((item, idx) => {
+                const qty = Number(item.qty) || 0;
+                const rate = Number(item.user_rate) || Number(item.rate) || 0;
+                const grossAmount = qty * rate;
+                const discountAmt = Number(item.discount) || 0;
+                const netAmount = grossAmount - discountAmt;
+
+                return (
+                  <TableRow key={idx}>
+                    <TableCell sx={{ position: 'sticky', left: 0, bgcolor: 'background.paper', zIndex: 1 }}>
+                      <Typography variant="body2" fontWeight="bold">{idx + 1}</Typography>
+                    </TableCell>
+                    <TableCell sx={{ position: 'sticky', left: 60, bgcolor: 'background.paper', zIndex: 1, borderRight: '1px solid', borderColor: 'divider' }}>
+                      <Autocomplete
+                        options={itemList || []}
+                        getOptionLabel={(option) => option.item_code || ''}
+                        value={itemList?.find(i => i.item_code === item.item_code) || null}
+                        onChange={(e, newValue) => {
+                          if (newValue) {
+                            const existingIndex = items.findIndex((i, index) => i.item_code === newValue.item_code && index !== idx);
+                            if (existingIndex >= 0) {
+                              toast.error(`Item ${newValue.item_code} has already been added in row ${existingIndex + 1}!`);
+                              return;
+                            }
+                          }
+
+                          const newItems = [...items];
+                          if (newValue) {
+                            newItems[idx].item_code = newValue.item_code;
+                            newItems[idx].item_name = newValue.item_name;
+                            newItems[idx].description = newValue.description;
+                            newItems[idx].rate = getPrice(newValue.item_code) || newValue.standard_rate || 0;
+                            newItems[idx].user_rate = '';
+                            newItems[idx].carton = '';
+                            newItems[idx].packing = '';
+                            newItems[idx].qty = '';
+                            newItems[idx].carton_weight = '';
+                            newItems[idx].discount = '';
+                          } else {
+                            newItems[idx].item_code = '';
+                            newItems[idx].item_name = '';
+                            newItems[idx].description = '';
+                            newItems[idx].rate = 0;
+                            newItems[idx].user_rate = '';
+                            newItems[idx].carton = '';
+                            newItems[idx].packing = '';
+                            newItems[idx].qty = '';
+                            newItems[idx].carton_weight = '';
+                            newItems[idx].discount = '';
+                            newItems[idx].gst = '';
+                          }
+                          setItems(newItems);
+                        }}
+                        renderInput={(params) => <TextField {...params} placeholder="Search Item..." variant="outlined" size="small" />}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">{item.item_name || '-'}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 200 }} title={stripHtml(item.description)}>
+                        {stripHtml(item.description) || '-'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <TextField size="small" value={item.carton} disabled={!!item.qty && !item.carton && !item.packing} onChange={e => {
+                        const val = e.target.value;
+                        if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                          const newItems = [...items];
+                          newItems[idx].carton = val;
+                          if (val || newItems[idx].packing) {
+                            newItems[idx].qty = (Number(val) || 0) * (Number(newItems[idx].packing) || 0);
+                          }
+                          setItems(newItems);
+                        }
+                      }} />
+                    </TableCell>
+                    <TableCell>
+                      <TextField size="small" value={item.packing} disabled={!!item.qty && !item.carton && !item.packing} onChange={e => {
+                        const val = e.target.value;
+                        if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                          const newItems = [...items];
+                          newItems[idx].packing = val;
+                          if (newItems[idx].carton || val) {
+                            newItems[idx].qty = (Number(newItems[idx].carton) || 0) * (Number(val) || 0);
+                          }
+                          setItems(newItems);
+                        }
+                      }} />
+                    </TableCell>
+                    <TableCell>
+                      <TextField size="small" value={item.qty} disabled={!!item.carton || !!item.packing} onChange={e => {
+                        const val = e.target.value;
+                        if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                          const newItems = [...items];
+                          newItems[idx].qty = val;
+                          setItems(newItems);
+                        }
+                      }} />
+                    </TableCell>
+                    <TableCell>
+                      <TextField size="small" value={item.carton_weight} onChange={e => {
+                        const val = e.target.value;
+                        if (val === '' || /^\d*\.?\d{0,3}$/.test(val)) {
+                          const newItems = [...items];
+                          newItems[idx].carton_weight = val;
+                          setItems(newItems);
+                        }
+                      }} />
+                    </TableCell>
+                    <TableCell>
+                      <TextField size="small" value={item.rate} InputProps={{ readOnly: true }} sx={{ bgcolor: 'action.hover' }} />
+                    </TableCell>
+                    <TableCell>
+                      <TextField size="small" placeholder="Rate..." value={item.user_rate} onChange={e => {
+                        const val = e.target.value;
+                        if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                          const newItems = [...items];
+                          newItems[idx].user_rate = val;
+                          setItems(newItems);
+                        }
+                      }} />
+                    </TableCell>
+                    <TableCell>₹{grossAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                    <TableCell>
+                      <TextField size="small" value={item.discount} onChange={e => {
+                        const val = e.target.value;
+                        if (val === '' || /^\d*\.?\d{0,2}$/.test(val)) {
+                          const newItems = [...items];
+                          newItems[idx].discount = val;
+                          setItems(newItems);
+                        }
+                      }} />
+                    </TableCell>
+                    <TableCell>₹{discountAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                    <TableCell>₹{netAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                    <TableCell>
+                      <IconButton color="error" onClick={() => removeItem(idx)}><Trash2 size={18} /></IconButton>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </Box>
         <Button sx={{ mt: 2 }} onClick={addItem}>+ Add Row</Button>
       </Paper>
 

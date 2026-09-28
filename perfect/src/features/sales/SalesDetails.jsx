@@ -68,42 +68,82 @@ export default function SalesDetails() {
         </Grid>
       </Grid>
 
-      <Paper sx={{ mb: 4, overflow: 'hidden' }}>
-        <TableContainer>
-          <Table>
+      <Paper sx={{ mb: 4, overflow: 'hidden', maxWidth: '100%' }}>
+        <TableContainer sx={{ overflowX: 'auto', width: '100%' }}>
+          <Table sx={{ minWidth: 1800 }}>
             <TableHead sx={{ bgcolor: 'background.default' }}>
               <TableRow>
-                <TableCell sx={{ fontWeight: 600, width: 50 }}>S.No.</TableCell>
-                <TableCell sx={{ fontWeight: 600, minWidth: 200 }}>Item Code</TableCell>
+                <TableCell sx={{ fontWeight: 600, width: 60, minWidth: 60, position: 'sticky', left: 0, bgcolor: 'background.default', zIndex: 2 }}>S.No.</TableCell>
+                <TableCell sx={{ fontWeight: 600, width: 250, minWidth: 250, position: 'sticky', left: 60, bgcolor: 'background.default', zIndex: 2, borderRight: '1px solid', borderColor: 'divider' }}>Item Code</TableCell>
                 <TableCell sx={{ fontWeight: 600, minWidth: 150 }}>Item Name</TableCell>
                 <TableCell sx={{ fontWeight: 600, minWidth: 200 }}>Description</TableCell>
+                <TableCell sx={{ fontWeight: 600, width: 100 }}>Carton</TableCell>
+                <TableCell sx={{ fontWeight: 600, width: 100 }}>Packing</TableCell>
                 <TableCell sx={{ fontWeight: 600, width: 120 }}>Quantity</TableCell>
+                <TableCell sx={{ fontWeight: 600, width: 120 }}>C. Wt.</TableCell>
                 <TableCell sx={{ fontWeight: 600, width: 120 }}>Rate</TableCell>
                 <TableCell sx={{ fontWeight: 600, width: 120 }}>Amount</TableCell>
+                <TableCell sx={{ fontWeight: 600, width: 120 }}>Discount Amt</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {doc.items?.map((item, index) => (
+              {doc.items?.map((item, index) => {
+                const qty = Number(item.qty) || 0;
+                const baseRate = Number(item.price_list_rate) || Number(item.rate) || 0;
+                const grossAmount = qty * baseRate;
+                const discountAmt = (baseRate - (Number(item.rate) || 0)) * qty;
+
+                return (
                 <TableRow key={index}>
-                  <TableCell>
+                  <TableCell sx={{ position: 'sticky', left: 0, bgcolor: 'background.paper', zIndex: 1 }}>
                     <Typography variant="body2" fontWeight="bold">{index + 1}</Typography>
                   </TableCell>
-                  <TableCell>{item.item_code}</TableCell>
+                  <TableCell sx={{ position: 'sticky', left: 60, bgcolor: 'background.paper', zIndex: 1, borderRight: '1px solid', borderColor: 'divider' }}>{item.item_code}</TableCell>
                   <TableCell>{item.item_name}</TableCell>
                   <TableCell>
                     <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 200 }} title={item.description}>
                       {item.description ? item.description.replace(/<[^>]*>?/gm, '') : '-'}
                     </Typography>
                   </TableCell>
+                  <TableCell>{item.carton || '-'}</TableCell>
+                  <TableCell>{item.packing || '-'}</TableCell>
                   <TableCell>{item.qty}</TableCell>
-                  <TableCell>{item.rate}</TableCell>
-                  <TableCell>₹{item.amount}</TableCell>
+                  <TableCell>{item.carton_weight || '-'}</TableCell>
+                  <TableCell>₹{baseRate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                  <TableCell>₹{grossAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                  <TableCell>₹{discountAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </TableContainer>
       </Paper>
+
+      {doc.taxes && doc.taxes.length > 0 && (
+        <Paper sx={{ mb: 4, overflow: 'hidden' }}>
+          <TableContainer>
+            <Table size="small">
+              <TableHead sx={{ bgcolor: 'background.default' }}>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 600 }}>Tax Type</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Rate</TableCell>
+                  <TableCell sx={{ fontWeight: 600, textAlign: 'right' }}>Tax Amount</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {doc.taxes.map((tax, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{tax.description}</TableCell>
+                    <TableCell>{tax.rate}%</TableCell>
+                    <TableCell sx={{ textAlign: 'right' }}>₹{tax.tax_amount?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
+      )}
 
       <Box display="flex" justifyContent="flex-end">
         <Paper sx={{ p: 3, width: { xs: '100%', md: '300px' } }}>

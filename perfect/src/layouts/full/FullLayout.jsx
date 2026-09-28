@@ -25,6 +25,7 @@ const PageWrapper = styled('div')(() => ({
   zIndex: 1,
   width: '100%',
   backgroundColor: 'transparent',
+  minWidth: 0,
 }));
 
 const FullLayout = () => {

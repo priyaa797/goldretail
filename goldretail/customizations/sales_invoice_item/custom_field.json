@@ -1,0 +1,23 @@
+[
+    {
+        "dt": "Sales Invoice Item",
+        "fieldname": "carton",
+        "label": "Carton",
+        "fieldtype": "Float",
+        "insert_after": "description"
+    },
+    {
+        "dt": "Sales Invoice Item",
+        "fieldname": "packing",
+        "label": "Packing",
+        "fieldtype": "Float",
+        "insert_after": "carton"
+    },
+    {
+        "dt": "Sales Invoice Item",
+        "fieldname": "carton_weight",
+        "label": "Carton Weight",
+        "fieldtype": "Float",
+        "insert_after": "qty"
+    }
+]
