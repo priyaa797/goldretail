@@ -134,7 +134,7 @@ export default function Catalog() {
             <Autocomplete
               options={categories?.map(c => c.name) || []}
               value={category}
-              onChange={(e, val) => setCategory(val)}
+              onChange={(e, val) => { setCategory(val); setItemsLoaded(false); }}
               renderInput={(params) => <TextField {...params} label="Category" size="small" />}
             />
           </Grid>
@@ -142,7 +142,7 @@ export default function Catalog() {
             <Autocomplete
               options={subCategories?.map(s => s.name) || []}
               value={subCategory}
-              onChange={(e, val) => setSubCategory(val)}
+              onChange={(e, val) => { setSubCategory(val); setItemsLoaded(false); }}
               renderInput={(params) => <TextField {...params} label="Sub Category" size="small" />}
             />
           </Grid>
@@ -150,7 +150,7 @@ export default function Catalog() {
             <Autocomplete
               options={['Wholesale', 'Retail']}
               value={priceList}
-              onChange={(e, val) => setPriceList(val || 'Wholesale')}
+              onChange={(e, val) => { setPriceList(val || 'Wholesale'); setItemsLoaded(false); }}
               disableClearable
               renderInput={(params) => <TextField {...params} label="Price List" size="small" />}
             />
@@ -160,7 +160,7 @@ export default function Catalog() {
               control={
                 <Checkbox
                   checked={showZeroStock}
-                  onChange={(e) => setShowZeroStock(e.target.checked)}
+                  onChange={(e) => { setShowZeroStock(e.target.checked); setItemsLoaded(false); }}
                   color="primary"
                 />
               }

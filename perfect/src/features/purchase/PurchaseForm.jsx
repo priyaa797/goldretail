@@ -121,10 +121,10 @@ export default function PurchaseForm() {
           carton_weight: Number(i.carton_weight) || 0
         };
       }),
-      taxes_and_charges: 'Input GST In-state - NGM',
+      taxes_and_charges: 'Input GST In-state - KGF',
       taxes: [
-        { charge_type: 'On Net Total', account_head: 'Input Tax CGST - NGM', description: 'Input Tax CGST - NGM' },
-        { charge_type: 'On Net Total', account_head: 'Input Tax SGST - NGM', description: 'Input Tax SGST - NGM' }
+        { charge_type: 'On Net Total', account_head: 'Input Tax CGST - KGF', description: 'Input Tax CGST - KGF' },
+        { charge_type: 'On Net Total', account_head: 'Input Tax SGST - KGF', description: 'Input Tax SGST - KGF' }
       ],
       update_stock: 1, // Crucial for our simplified workflow
       docstatus: 1 // Try to submit immediately

@@ -131,10 +131,10 @@ export default function SalesForm() {
           carton_weight: Number(i.carton_weight) || 0
         };
       }),
-      taxes_and_charges: 'Output GST In-state - NGM',
+      taxes_and_charges: 'Output GST In-state - KGF',
       taxes: [
-        { charge_type: 'On Net Total', account_head: 'Output Tax CGST - NGM', description: 'Output Tax CGST - NGM' },
-        { charge_type: 'On Net Total', account_head: 'Output Tax SGST - NGM', description: 'Output Tax SGST - NGM' }
+        { charge_type: 'On Net Total', account_head: 'Output Tax CGST - KGF', description: 'Output Tax CGST - KGF' },
+        { charge_type: 'On Net Total', account_head: 'Output Tax SGST - KGF', description: 'Output Tax SGST - KGF' }
       ],
       update_stock: 1, // Crucial for our simplified workflow
       docstatus: 1 // Try to submit immediately
