@@ -86,9 +86,42 @@ def get_item_by_barcode(barcode_val):
         
     item = frappe.get_doc("Item", item_barcode)
     
+    # Fetch tax
+    gst_percent = 0.0
+    item_tax = frappe.db.get_value('Item Tax', {'parent': item.name}, 'item_tax_template')
+    if item_tax:
+        templates = frappe.get_all('Item Tax Template Detail', filters={'parent': item_tax}, fields=['tax_type', 'tax_rate'])
+        for t in templates:
+            if 'IGST' in t.tax_type and 'Refund' not in t.tax_type and 'RCM' not in t.tax_type:
+                gst_percent = t.tax_rate
+                break
+                
     return {
         "item_code": item.item_code,
         "item_name": item.item_name,
         "uom": item.stock_uom,
-        "rate": 0
+        "rate": 0,
+        "gst_percentage": gst_percent
     }
+
+@frappe.whitelist()
+def get_all_items():
+    items = frappe.get_all('Item', fields=['name', 'item_code', 'item_name', 'description', 'standard_rate'])
+    
+    # Pre-fetch item taxes to optimize
+    item_taxes = frappe.get_all('Item Tax', fields=['parent', 'item_tax_template'])
+    tax_map = {}
+    for t in item_taxes:
+        tax_map[t.parent] = t.item_tax_template
+        
+    template_rates = {}
+    templates = frappe.get_all('Item Tax Template Detail', fields=['parent', 'tax_type', 'tax_rate'])
+    for t in templates:
+        if 'IGST' in t.tax_type and 'Refund' not in t.tax_type and 'RCM' not in t.tax_type:
+            template_rates[t.parent] = t.tax_rate
+            
+    for item in items:
+        template = tax_map.get(item.name)
+        item['gst_percentage'] = template_rates.get(template, 0.0) if template else 0.0
+        
+    return items

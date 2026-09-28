@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Button, Typography, Paper, Grid, TextField, MenuItem, IconButton, Table, TableBody, TableCell, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete } from '@mui/material';
-import { useFrappePostCall, useFrappeGetDocList } from 'frappe-react-sdk';
+import { useFrappePostCall, useFrappeGetDocList, useFrappeGetCall } from 'frappe-react-sdk';
 import { useNavigate } from 'react-router';
 import { Trash2, Save, Camera } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -9,10 +9,12 @@ import { Html5QrcodeScanner } from 'html5-qrcode';
 export default function PurchaseForm() {
   const navigate = useNavigate();
   const [supplier, setSupplier] = useState('');
-  const [items, setItems] = useState([{ item_code: '', qty: 1, rate: 0 }]);
+  const [billNo, setBillNo] = useState('');
+  const [items, setItems] = useState([{ item_code: '', item_name: '', description: '', qty: '', rate: 0, carton: '', packing: '', carton_weight: '', discount: '' }]);
 
   const { data: suppliers } = useFrappeGetDocList('Supplier', { fields: ['name'] });
-  const { data: itemList, mutate: mutateItemList } = useFrappeGetDocList('Item', { fields: ['name', 'item_code', 'item_name', 'description'] });
+  const { data: itemListResponse, mutate: mutateItemList } = useFrappeGetCall('goldretail.api.item_barcode.get_all_items');
+  const itemList = itemListResponse?.message || [];
 
   const { call: insertDoc } = useFrappePostCall('frappe.client.insert');
   const { call: getBarcodeItem } = useFrappePostCall('goldretail.api.item_barcode.get_item_by_barcode');
@@ -24,7 +26,20 @@ export default function PurchaseForm() {
   const [newItemData, setNewItemData] = useState({ item_code: '', item_name: '' });
   const [isCreatingItem, setIsCreatingItem] = useState(false);
 
-
+  useEffect(() => {
+    // Watch for carton and packing changes and update qty automatically
+    setItems(currentItems => currentItems.map(item => {
+      if (item.carton || item.packing) {
+        const carton = Number(item.carton) || 0;
+        const packing = Number(item.packing) || 0;
+        const newQty = carton * packing;
+        if (newQty !== Number(item.qty)) {
+          return { ...item, qty: newQty };
+        }
+      }
+      return item;
+    }));
+  }, [JSON.stringify(items.map(i => ({ c: i.carton, p: i.packing })))]);
 
   const processBarcode = async (barcode) => {
     if (!barcode) return;
@@ -75,6 +90,10 @@ export default function PurchaseForm() {
       toast.error('Please select a supplier');
       return;
     }
+    if (!billNo) {
+      toast.error('Please enter Supplier Invoice No (Bill No)');
+      return;
+    }
     const invalidItems = items.filter(i => !i.item_code || (Number(i.qty) || 0) <= 0 || (Number(i.rate) || 0) <= 0);
     if (invalidItems.length > 0) {
       toast.error('Please ensure all items have an Item Code, valid Quantity, and valid Rate.');
@@ -84,7 +103,29 @@ export default function PurchaseForm() {
     const doc = {
       doctype: 'Purchase Invoice',
       supplier,
-      items: items.map(i => ({ item_code: i.item_code, qty: Number(i.qty) || 0, rate: Number(i.rate) || 0 })),
+      bill_no: billNo,
+      items: items.map(i => {
+        const qty = Number(i.qty) || 0;
+        const baseRate = Number(i.rate) || 0;
+        const grossAmount = qty * baseRate;
+        const discountPercentage = Number(i.discount) || 0;
+
+        return {
+          item_code: i.item_code,
+          qty: qty,
+          price_list_rate: baseRate,
+          discount_percentage: discountPercentage,
+          description: i.description,
+          carton: Number(i.carton) || 0,
+          packing: Number(i.packing) || 0,
+          carton_weight: Number(i.carton_weight) || 0
+        };
+      }),
+      taxes_and_charges: 'Input GST In-state - NGM',
+      taxes: [
+        { charge_type: 'On Net Total', account_head: 'Input Tax CGST - NGM', description: 'Input Tax CGST - NGM' },
+        { charge_type: 'On Net Total', account_head: 'Input Tax SGST - NGM', description: 'Input Tax SGST - NGM' }
+      ],
       update_stock: 1, // Crucial for our simplified workflow
       docstatus: 1 // Try to submit immediately
     };
@@ -102,7 +143,7 @@ export default function PurchaseForm() {
     );
   };
 
-  const addItem = () => setItems([...items, { item_code: '', item_name: '', description: '', qty: 1, rate: 0 }]);
+  const addItem = () => setItems([...items, { item_code: '', item_name: '', description: '', qty: '', rate: 0, carton: '', packing: '', carton_weight: '', discount: '' }]);
   const removeItem = (index) => setItems(items.filter((_, i) => i !== index));
 
   const stripHtml = (html) => {
@@ -169,6 +210,15 @@ export default function PurchaseForm() {
               {suppliers?.map(s => <MenuItem key={s.name} value={s.name}>{s.name}</MenuItem>)}
             </TextField>
           </Grid>
+          <Grid item xs={12} md={6}>
+            <TextField
+              fullWidth
+              label="Supplier Invoice No (Bill No)"
+              value={billNo}
+              onChange={e => setBillNo(e.target.value)}
+              required
+            />
+          </Grid>
         </Grid>
       </Paper>
 
@@ -196,9 +246,17 @@ export default function PurchaseForm() {
               <TableCell sx={{ minWidth: 200 }}>Item Code</TableCell>
               <TableCell sx={{ minWidth: 150 }}>Item Name</TableCell>
               <TableCell sx={{ minWidth: 200 }}>Description</TableCell>
+              <TableCell sx={{ width: 100 }}>Carton</TableCell>
+              <TableCell sx={{ width: 100 }}>Packing</TableCell>
               <TableCell sx={{ width: 120 }}>Quantity</TableCell>
+              <TableCell sx={{ width: 120 }}>C. Wt.</TableCell>
               <TableCell sx={{ width: 120 }}>Rate</TableCell>
-              <TableCell sx={{ width: 120 }}>Amount</TableCell>
+              <TableCell sx={{ width: 120 }}>Gross Amt</TableCell>
+              <TableCell sx={{ width: 100 }}>Discount (%)</TableCell>
+              <TableCell sx={{ width: 120 }}>Discount Amt</TableCell>
+              <TableCell sx={{ width: 100 }}>GST %</TableCell>
+              <TableCell sx={{ width: 120 }}>GST Amt</TableCell>
+              <TableCell sx={{ width: 120 }}>Net Amt</TableCell>
               <TableCell sx={{ width: 60 }}></TableCell>
             </TableRow>
           </TableHead>
@@ -245,10 +303,12 @@ export default function PurchaseForm() {
                         newItems[idx].item_code = newValue.item_code;
                         newItems[idx].item_name = newValue.item_name;
                         newItems[idx].description = newValue.description;
+                        newItems[idx].gst_percentage = newValue.gst_percentage || 0;
                       } else {
                         newItems[idx].item_code = '';
                         newItems[idx].item_name = '';
                         newItems[idx].description = '';
+                        newItems[idx].gst_percentage = 0;
                       }
                       setItems(newItems);
                     }}
@@ -259,17 +319,40 @@ export default function PurchaseForm() {
                   <Typography variant="body2">{item.item_name || '-'}</Typography>
                 </TableCell>
                 <TableCell>
-                  <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 200 }} title={stripHtml(item.description)}>
-                    {stripHtml(item.description) || '-'}
-                  </Typography>
+                  <TextField size="small" multiline maxRows={2} placeholder="Description" value={item.description || ''} onChange={e => {
+                    const newItems = [...items];
+                    newItems[idx].description = e.target.value;
+                    setItems(newItems);
+                  }} />
+                </TableCell>
+                <TableCell>
+                  <TextField size="small" value={item.carton} disabled={!!item.qty && !item.carton && !item.packing} onChange={e => {
+                    const val = e.target.value;
+                    if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                      const newItems = [...items];
+                      newItems[idx].carton = val;
+                      setItems(newItems);
+                    }
+                  }} />
+                </TableCell>
+                <TableCell>
+                  <TextField size="small" value={item.packing} disabled={!!item.qty && !item.carton && !item.packing} onChange={e => {
+                    const val = e.target.value;
+                    if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                      const newItems = [...items];
+                      newItems[idx].packing = val;
+                      setItems(newItems);
+                    }
+                  }} />
                 </TableCell>
                 <TableCell>
                   <TextField
                     size="small"
                     value={item.qty}
+                    disabled={!!item.carton || !!item.packing}
                     onChange={e => {
                       const val = e.target.value;
-                      if (/^\d*\.?\d*$/.test(val)) {
+                      if (val === '' || /^\d*\.?\d*$/.test(val)) {
                         const newItems = [...items];
                         newItems[idx].qty = val;
                         setItems(newItems);
@@ -278,12 +361,22 @@ export default function PurchaseForm() {
                   />
                 </TableCell>
                 <TableCell>
+                  <TextField size="small" value={item.carton_weight} disabled={!item.carton} onChange={e => {
+                    const val = e.target.value;
+                    if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                      const newItems = [...items];
+                      newItems[idx].carton_weight = val;
+                      setItems(newItems);
+                    }
+                  }} />
+                </TableCell>
+                <TableCell>
                   <TextField
                     size="small"
                     value={item.rate}
                     onChange={e => {
                       const val = e.target.value;
-                      if (/^\d*\.?\d*$/.test(val)) {
+                      if (val === '' || /^\d*\.?\d*$/.test(val)) {
                         const newItems = [...items];
                         newItems[idx].rate = val;
                         setItems(newItems);
@@ -291,7 +384,41 @@ export default function PurchaseForm() {
                     }}
                   />
                 </TableCell>
-                <TableCell>₹{(Number(item.qty) || 0) * (Number(item.rate) || 0)}</TableCell>
+                <TableCell>₹{(() => {
+                  const grossAmount = (Number(item.qty) || 0) * (Number(item.rate) || 0);
+                  return grossAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                })()}</TableCell>
+                <TableCell>
+                  <TextField size="small" placeholder="%" value={item.discount} onChange={e => {
+                    const val = e.target.value;
+                    if (val === '' || /^\d*\.?\d{0,2}$/.test(val)) {
+                      const newItems = [...items];
+                      newItems[idx].discount = val;
+                      setItems(newItems);
+                    }
+                  }} />
+                </TableCell>
+                <TableCell>₹{(() => {
+                  const grossAmount = (Number(item.qty) || 0) * (Number(item.rate) || 0);
+                  const discountAmt = grossAmount * ((Number(item.discount) || 0) / 100);
+                  return discountAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                })()}</TableCell>
+                <TableCell>{item.gst_percentage || 0}%</TableCell>
+                <TableCell>₹{(() => {
+                  const grossAmount = (Number(item.qty) || 0) * (Number(item.rate) || 0);
+                  const discountAmt = grossAmount * ((Number(item.discount) || 0) / 100);
+                  const taxableAmount = grossAmount - discountAmt;
+                  const gstAmt = taxableAmount * ((Number(item.gst_percentage) || 0) / 100);
+                  return gstAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                })()}</TableCell>
+                <TableCell>₹{(() => {
+                  const grossAmount = (Number(item.qty) || 0) * (Number(item.rate) || 0);
+                  const discountAmt = grossAmount * ((Number(item.discount) || 0) / 100);
+                  const taxableAmount = grossAmount - discountAmt;
+                  const gstAmt = taxableAmount * ((Number(item.gst_percentage) || 0) / 100);
+                  const netAmount = taxableAmount + gstAmt;
+                  return netAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                })()}</TableCell>
                 <TableCell>
                   <IconButton color="error" onClick={() => removeItem(idx)}><Trash2 size={18} /></IconButton>
                 </TableCell>

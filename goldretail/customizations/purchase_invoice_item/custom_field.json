@@ -1,0 +1,23 @@
+[
+    {
+        "dt": "Purchase Invoice Item",
+        "fieldname": "carton",
+        "label": "Carton",
+        "fieldtype": "Float",
+        "insert_after": "description"
+    },
+    {
+        "dt": "Purchase Invoice Item",
+        "fieldname": "packing",
+        "label": "Packing",
+        "fieldtype": "Float",
+        "insert_after": "carton"
+    },
+    {
+        "dt": "Purchase Invoice Item",
+        "fieldname": "carton_weight",
+        "label": "Carton Weight",
+        "fieldtype": "Float",
+        "insert_after": "qty"
+    }
+]

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Button, Typography, Paper, Grid, TextField, MenuItem, IconButton, Table, TableBody, TableCell, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete } from '@mui/material';
-import { useFrappePostCall, useFrappeGetDocList } from 'frappe-react-sdk';
+import { useFrappePostCall, useFrappeGetDocList, useFrappeGetCall } from 'frappe-react-sdk';
 import { useNavigate } from 'react-router';
 import { Trash2, Save, Camera } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -14,7 +14,8 @@ export default function SalesForm() {
 
   const { data: customers } = useFrappeGetDocList('Customer', { fields: ['name', 'customer_group', 'default_price_list'], limit: 10000 });
   const { data: customerGroups } = useFrappeGetDocList('Customer Group', { fields: ['name', 'default_price_list'], limit: 1000 });
-  const { data: itemList } = useFrappeGetDocList('Item', { fields: ['name', 'item_code', 'item_name', 'description', 'standard_rate'], limit: 100000 });
+  const { data: itemListResponse } = useFrappeGetCall('goldretail.api.item_barcode.get_all_items');
+  const itemList = itemListResponse?.message || [];
 
   const { data: itemPrices } = useFrappeGetDocList('Item Price', {
     fields: ['item_code', 'price_list_rate'],
@@ -115,20 +116,26 @@ export default function SalesForm() {
       items: items.map(i => {
         const qty = Number(i.qty) || 0;
         const baseRate = Number(i.user_rate) || Number(i.rate) || 0;
-        const discountAmt = Number(i.discount) || 0;
         const grossAmount = qty * baseRate;
-        const discountPercentage = grossAmount > 0 ? (discountAmt / grossAmount) * 100 : 0;
+        const discountPercentage = Number(i.discount) || 0;
+        const discountAmt = grossAmount > 0 ? grossAmount * (discountPercentage / 100) : 0;
 
         return {
           item_code: i.item_code,
           qty: qty,
           price_list_rate: baseRate,
           discount_percentage: discountPercentage,
+          description: i.description,
           carton: Number(i.carton) || 0,
           packing: Number(i.packing) || 0,
           carton_weight: Number(i.carton_weight) || 0
         };
       }),
+      taxes_and_charges: 'Output GST In-state - NGM',
+      taxes: [
+        { charge_type: 'On Net Total', account_head: 'Output Tax CGST - NGM', description: 'Output Tax CGST - NGM' },
+        { charge_type: 'On Net Total', account_head: 'Output Tax SGST - NGM', description: 'Output Tax SGST - NGM' }
+      ],
       update_stock: 1, // Crucial for our simplified workflow
       docstatus: 1 // Try to submit immediately
     };
@@ -254,9 +261,11 @@ export default function SalesForm() {
                 <TableCell sx={{ width: 120 }}>C. Wt.</TableCell>
                 <TableCell sx={{ width: 120 }}>Rate (System)</TableCell>
                 <TableCell sx={{ width: 120 }}>Rate (User)</TableCell>
-                <TableCell sx={{ width: 120 }}>Amount</TableCell>
-                <TableCell sx={{ width: 100 }}>Discount</TableCell>
+                <TableCell sx={{ width: 120 }}>Gross Amt</TableCell>
+                <TableCell sx={{ width: 100 }}>Discount (%)</TableCell>
                 <TableCell sx={{ width: 120 }}>Discount Amt</TableCell>
+                <TableCell sx={{ width: 100 }}>GST %</TableCell>
+                <TableCell sx={{ width: 120 }}>GST Amt</TableCell>
                 <TableCell sx={{ width: 120 }}>Net Amt</TableCell>
                 <TableCell sx={{ width: 60 }}></TableCell>
               </TableRow>
@@ -266,8 +275,11 @@ export default function SalesForm() {
                 const qty = Number(item.qty) || 0;
                 const rate = Number(item.user_rate) || Number(item.rate) || 0;
                 const grossAmount = qty * rate;
-                const discountAmt = Number(item.discount) || 0;
-                const netAmount = grossAmount - discountAmt;
+                const discountPercentage = Number(item.discount) || 0;
+                const discountAmt = grossAmount * (discountPercentage / 100);
+                const taxableAmount = grossAmount - discountAmt;
+                const gstAmt = taxableAmount * (Number(item.gst_percentage) || 0) / 100;
+                const finalNetAmount = taxableAmount + gstAmt;
 
                 return (
                   <TableRow key={idx}>
@@ -300,6 +312,7 @@ export default function SalesForm() {
                             newItems[idx].qty = '';
                             newItems[idx].carton_weight = '';
                             newItems[idx].discount = '';
+                            newItems[idx].gst_percentage = newValue.gst_percentage || 0;
                           } else {
                             newItems[idx].item_code = '';
                             newItems[idx].item_name = '';
@@ -311,7 +324,7 @@ export default function SalesForm() {
                             newItems[idx].qty = '';
                             newItems[idx].carton_weight = '';
                             newItems[idx].discount = '';
-                            newItems[idx].gst = '';
+                            newItems[idx].gst_percentage = 0;
                           }
                           setItems(newItems);
                         }}
@@ -322,9 +335,11 @@ export default function SalesForm() {
                       <Typography variant="body2">{item.item_name || '-'}</Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 200 }} title={stripHtml(item.description)}>
-                        {stripHtml(item.description) || '-'}
-                      </Typography>
+                      <TextField size="small" multiline maxRows={2} placeholder="Description" value={item.description || ''} onChange={e => {
+                        const newItems = [...items];
+                        newItems[idx].description = e.target.value;
+                        setItems(newItems);
+                      }} />
                     </TableCell>
                     <TableCell>
                       <TextField size="small" value={item.carton} disabled={!!item.qty && !item.carton && !item.packing} onChange={e => {
@@ -387,7 +402,7 @@ export default function SalesForm() {
                     </TableCell>
                     <TableCell>₹{grossAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                     <TableCell>
-                      <TextField size="small" value={item.discount} onChange={e => {
+                      <TextField size="small" placeholder="%" value={item.discount} onChange={e => {
                         const val = e.target.value;
                         if (val === '' || /^\d*\.?\d{0,2}$/.test(val)) {
                           const newItems = [...items];
@@ -397,7 +412,9 @@ export default function SalesForm() {
                       }} />
                     </TableCell>
                     <TableCell>₹{discountAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                    <TableCell>₹{netAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                    <TableCell>{item.gst_percentage || 0}%</TableCell>
+                    <TableCell>₹{gstAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                    <TableCell>₹{finalNetAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                     <TableCell>
                       <IconButton color="error" onClick={() => removeItem(idx)}><Trash2 size={18} /></IconButton>
                     </TableCell>
