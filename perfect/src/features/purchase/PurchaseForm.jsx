@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Button, Typography, Paper, Grid, TextField, MenuItem, IconButton, Table, TableBody, TableCell, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete } from '@mui/material';
+import { Box, Button, Typography, Paper, Grid, TextField, MenuItem, IconButton, Table, TableBody, TableCell, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, createFilterOptions } from '@mui/material';
 import { useFrappePostCall, useFrappeGetDocList, useFrappeGetCall } from 'frappe-react-sdk';
 import { useNavigate } from 'react-router';
 import { Trash2, Save, Camera } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Html5QrcodeScanner } from 'html5-qrcode';
+
+const filterOptions = createFilterOptions({
+  stringify: (option) => option.is_create_btn ? option.item_code : `${option.item_code} ${option.item_name || ''}`,
+});
 
 export default function PurchaseForm() {
   const navigate = useNavigate();
@@ -269,6 +273,7 @@ export default function PurchaseForm() {
                 <TableCell>
                   <Autocomplete
                     options={[...(itemList || []), { is_create_btn: true, item_code: '+ Create New Item' }]}
+                    filterOptions={filterOptions}
                     getOptionLabel={(option) => option?.item_code || ''}
                     value={itemList?.find(i => i.item_code === item.item_code) || null}
                     renderOption={(props, option) => {
@@ -280,7 +285,12 @@ export default function PurchaseForm() {
                           </li>
                         );
                       }
-                      return <li key={key} {...restProps}>{option.item_code} - {option.item_name}</li>;
+                      return (
+                        <li key={key} {...restProps} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '8px 16px' }}>
+                          <Typography variant="body1" sx={{ lineHeight: 1.2 }}>{option.item_code}</Typography>
+                          <Typography variant="caption" color="textSecondary">{option.item_name}</Typography>
+                        </li>
+                      );
                     }}
                     onChange={(e, newValue) => {
                       if (newValue?.is_create_btn) {
