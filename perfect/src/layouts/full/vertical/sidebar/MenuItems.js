@@ -6,6 +6,8 @@ import {
   IconReportAnalytics,
   IconSettings,
   IconPoint,
+  IconTemplate,
+  IconLibrary,
 } from '@tabler/icons-react';
 
 import { uniqueId } from 'lodash';
@@ -28,13 +30,13 @@ const Menuitems = [
   {
     id: uniqueId(),
     title: 'Item',
-    icon: IconPoint,
+    icon: IconTemplate,
     href: '/master/item',
   },
   {
     id: uniqueId(),
     title: 'Catalog',
-    icon: IconPoint,
+    icon: IconLibrary,
     href: '/master/catalog',
   },
   {

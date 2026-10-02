@@ -75,3 +75,53 @@ def get_stock_balance(warehouse=None, item=None, show_zero_balance=0):
         })
         
     return results
+
+@frappe.whitelist()
+def get_item_ledger(item_code, warehouse=None, page=1, page_size=20):
+    filters = {"item_code": item_code, "is_cancelled": 0}
+    if warehouse:
+        filters["warehouse"] = warehouse
+        
+    page = frappe.utils.cint(page) or 1
+    page_size = frappe.utils.cint(page_size) or 20
+    limit_start = (page - 1) * page_size
+        
+    entries = frappe.get_all("Stock Ledger Entry", 
+                             filters=filters,
+                             fields=["posting_date", "posting_time", "voucher_type", "voucher_no", "actual_qty", "warehouse"],
+                             order_by="posting_date desc, posting_time desc",
+                             limit_start=limit_start,
+                             limit=page_size)
+                             
+    total_count = frappe.db.count("Stock Ledger Entry", filters=filters)
+                             
+    results = []
+    for e in entries:
+        party = ""
+        if e.voucher_type and e.voucher_no:
+            try:
+                if e.voucher_type in ["Sales Invoice", "Delivery Note", "Sales Receipt"]:
+                    party = frappe.db.get_value(e.voucher_type, e.voucher_no, "customer_name") or frappe.db.get_value(e.voucher_type, e.voucher_no, "customer")
+                elif e.voucher_type in ["Purchase Invoice", "Purchase Receipt"]:
+                    party = frappe.db.get_value(e.voucher_type, e.voucher_no, "supplier_name") or frappe.db.get_value(e.voucher_type, e.voucher_no, "supplier")
+                elif e.voucher_type == "Stock Entry":
+                    party = "Internal Transfer"
+            except Exception:
+                pass
+                
+        results.append({
+            "posting_date": e.posting_date,
+            "voucher_type": e.voucher_type,
+            "voucher_no": e.voucher_no,
+            "in_qty": e.actual_qty if e.actual_qty > 0 else 0,
+            "out_qty": abs(e.actual_qty) if e.actual_qty < 0 else 0,
+            "party": party or "-",
+            "warehouse": e.warehouse
+        })
+        
+    return {
+        "data": results,
+        "total_count": total_count,
+        "page": page,
+        "page_size": page_size
+    }
