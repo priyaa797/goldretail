@@ -121,10 +121,10 @@ export default function PurchaseForm() {
           carton_weight: Number(i.carton_weight) || 0
         };
       }),
-      taxes_and_charges: 'Input GST In-state - KGF',
+      taxes_and_charges: `Input GST In-state - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`,
       taxes: [
-        { charge_type: 'On Net Total', account_head: 'Input Tax CGST - KGF', description: 'Input Tax CGST - KGF' },
-        { charge_type: 'On Net Total', account_head: 'Input Tax SGST - KGF', description: 'Input Tax SGST - KGF' }
+        { charge_type: 'On Net Total', account_head: `Input Tax CGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`, description: `Input Tax CGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}` },
+        { charge_type: 'On Net Total', account_head: `Input Tax SGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`, description: `Input Tax SGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}` }
       ],
       update_stock: 1, // Crucial for our simplified workflow
       docstatus: 1 // Try to submit immediately
