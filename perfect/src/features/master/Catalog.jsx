@@ -17,6 +17,7 @@ export default function Catalog() {
   const [subCategory, setSubCategory] = useState(null);
   const [showZeroStock, setShowZeroStock] = useState(false);
   const [priceList, setPriceList] = useState('Wholesale');
+  const [discount, setDiscount] = useState('');
 
   const { data: categories } = useFrappeGetDocList('Item Category', { fields: ['name'], limit: 1000 });
   const { data: subCategories } = useFrappeGetDocList('Item Sub Category', { fields: ['name'], limit: 1000 });
@@ -80,7 +81,7 @@ export default function Catalog() {
     }
 
     toast.promise(
-      generatePdfCall({ item_codes: selectedItems, price_list: priceList }),
+      generatePdfCall({ item_codes: selectedItems, price_list: priceList, discount: parseFloat(discount) || 0.0 }),
       {
         loading: 'Generating PDF Catalogue...',
         success: (res) => {
@@ -155,7 +156,18 @@ export default function Catalog() {
               renderInput={(params) => <TextField {...params} label="Price List" size="small" />}
             />
           </Grid>
-          <Grid item xs={12} sm={3}>
+          <Grid item xs={12} sm={2}>
+            <TextField
+              label="Discount (%)"
+              type="number"
+              size="small"
+              fullWidth
+              inputProps={{ step: "0.1" }}
+              value={discount}
+              onChange={(e) => setDiscount(e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12} sm={2}>
             <FormControlLabel
               control={
                 <Checkbox

@@ -2,9 +2,14 @@ import frappe
 import json
 
 @frappe.whitelist()
-def generate_pdf(item_codes, price_list="Wholesale"):
+def generate_pdf(item_codes, price_list="Wholesale", discount=0.0):
     if isinstance(item_codes, str):
         item_codes = json.loads(item_codes)
+    
+    try:
+        discount = float(discount)
+    except (ValueError, TypeError):
+        discount = 0.0
         
     items = frappe.get_all("Item", 
                            filters={"item_code": ["in", item_codes]}, 
@@ -13,7 +18,15 @@ def generate_pdf(item_codes, price_list="Wholesale"):
     prices = frappe.get_all("Item Price",
                             filters={"item_code": ["in", item_codes], "price_list": price_list},
                             fields=["item_code", "price_list_rate"])
-    price_map = {p.item_code: p.price_list_rate for p in prices}
+                            
+    # Increase price by the given discount percentage
+    price_map = {}
+    for p in prices:
+        base_price = p.price_list_rate or 0
+        if discount:
+            price_map[p.item_code] = base_price * (1 + (discount / 100.0))
+        else:
+            price_map[p.item_code] = base_price
     
     # Sort items by the order they were provided
     item_dict = {item.item_code: item for item in items}
