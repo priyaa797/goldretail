@@ -39,9 +39,9 @@ export default function ItemDetails() {
           </Button>
           <Typography variant="h5" fontWeight="bold">Item: {item.item_name}</Typography>
         </Box>
-        <Button 
-          variant="contained" 
-          startIcon={<Edit2 size={18} />} 
+        <Button
+          variant="contained"
+          startIcon={<Edit2 size={18} />}
           onClick={() => navigate(`/master/item/${encodeURIComponent(item.name)}/edit`)}
         >
           Edit Item
@@ -53,7 +53,7 @@ export default function ItemDetails() {
           <Paper sx={{ p: 3, mb: 3 }}>
             <Typography variant="h6" mb={2}>Overview</Typography>
             <Divider sx={{ mb: 2 }} />
-            
+
             <Grid container spacing={3}>
               <Grid item xs={12} sm={6}>
                 <Typography variant="body2" color="text.secondary">Item Code</Typography>
@@ -93,15 +93,34 @@ export default function ItemDetails() {
               </Grid>
             </Grid>
           </Paper>
+
+          <Paper sx={{ p: 3, mt: 3 }}>
+            <Typography variant="h6" mb={2}>Specifications</Typography>
+            <Divider sx={{ mb: 2 }} />
+            <Grid container spacing={3}>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="body2" color="text.secondary">Per Piece Weight</Typography>
+                <Typography variant="subtitle1" fontWeight="bold">
+                  {item.weight_per_unit ? `${item.weight_per_unit} ${item.weight_uom || 'kg'}` : '-'}
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="body2" color="text.secondary">Nos per Carton</Typography>
+                <Typography variant="subtitle1" fontWeight="bold">
+                  {item.uoms?.find(u => u.uom === 'Carton')?.conversion_factor || '-'}
+                </Typography>
+              </Grid>
+            </Grid>
+          </Paper>
         </Grid>
 
         <Grid item xs={12} md={4}>
           <Paper sx={{ p: 3, mb: 3, textAlign: 'center' }}>
             <Typography variant="h6" mb={2} textAlign="left">Item Image</Typography>
             <Box display="flex" justifyContent="center" mb={2}>
-              <Avatar 
-                variant="rounded" 
-                src={item.image} 
+              <Avatar
+                variant="rounded"
+                src={item.image}
                 alt={item.item_name}
                 sx={{ width: 150, height: 150, bgcolor: 'grey.100' }}
               >
@@ -109,7 +128,7 @@ export default function ItemDetails() {
               </Avatar>
             </Box>
           </Paper>
-          
+
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" mb={2}>Settings</Typography>
             <Divider sx={{ mb: 2 }} />

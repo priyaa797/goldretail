@@ -27,7 +27,7 @@ export default function PurchaseForm() {
 
   const [createItemModalOpen, setCreateItemModalOpen] = useState(false);
   const [activeRowIndex, setActiveRowIndex] = useState(null);
-  const [newItemData, setNewItemData] = useState({ item_code: '', item_name: '' });
+  const [newItemData, setNewItemData] = useState({ item_code: '', item_name: '', weight_per_unit: '', nos_per_carton: '' });
   const [isCreatingItem, setIsCreatingItem] = useState(false);
 
   useEffect(() => {
@@ -171,7 +171,21 @@ export default function PurchaseForm() {
         item_group: 'Products',
         gst_hsn_code: '999999',
         is_stock_item: 1,
+        stock_uom: 'Nos',
+        weight_per_unit: parseFloat(newItemData.weight_per_unit) || 0,
+        weight_uom: 'Nos'
       };
+
+      if (newItemData.nos_per_carton) {
+        itemDoc.uoms = [
+          { uom: 'Nos', conversion_factor: 1 },
+          { uom: 'Carton', conversion_factor: parseFloat(newItemData.nos_per_carton) }
+        ];
+      } else {
+        itemDoc.uoms = [
+          { uom: 'Nos', conversion_factor: 1 }
+        ];
+      }
 
       await insertDoc({ doc: itemDoc });
 
@@ -294,7 +308,7 @@ export default function PurchaseForm() {
                     }}
                     onChange={(e, newValue) => {
                       if (newValue?.is_create_btn) {
-                        setNewItemData({ item_code: '', item_name: '' });
+                        setNewItemData({ item_code: '', item_name: '', weight_per_unit: '', nos_per_carton: '' });
                         setActiveRowIndex(idx);
                         setCreateItemModalOpen(true);
                         return;
@@ -463,6 +477,12 @@ export default function PurchaseForm() {
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField fullWidth label="Item Name" size="small" value={newItemData.item_name} onChange={e => setNewItemData({ ...newItemData, item_name: e.target.value })} disabled={isCreatingItem} />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField fullWidth label="Per Piece Weight" size="small" type="number" value={newItemData.weight_per_unit} onChange={e => setNewItemData({ ...newItemData, weight_per_unit: e.target.value })} disabled={isCreatingItem} />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField fullWidth label="Nos per Carton" size="small" type="number" value={newItemData.nos_per_carton} onChange={e => setNewItemData({ ...newItemData, nos_per_carton: e.target.value })} disabled={isCreatingItem} />
             </Grid>
           </Grid>
         </DialogContent>

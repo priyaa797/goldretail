@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Button, Typography, Paper, Grid, TextField, Autocomplete, InputAdornment, IconButton } from '@mui/material';
+import { Box, Button, Typography, Paper, Grid, TextField, Autocomplete, InputAdornment, IconButton, Checkbox, FormControlLabel } from '@mui/material';
 import { useFrappeGetDocList, useFrappePostCall, useFrappeGetDoc, useFrappeUpdateDoc } from 'frappe-react-sdk';
 import { Save, Image as ImageIcon, X, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -15,7 +15,10 @@ export default function ItemForm() {
     sub_category: '',
     type: '',
     wholesale_price: '',
-    retail_price: ''
+    retail_price: '',
+    weight_per_unit: '',
+    weight_uom: 'Nos',
+    nos_per_carton: ''
   });
 
   const [imageFile, setImageFile] = useState(null);
@@ -47,7 +50,10 @@ export default function ItemForm() {
         item_group: existingItem.item_group || '',
         category: existingItem.category || '',
         sub_category: existingItem.sub_category || '',
-        type: existingItem.type || ''
+        type: existingItem.type || '',
+        weight_per_unit: existingItem.weight_per_unit || '',
+        weight_uom: existingItem.weight_uom || 'Nos',
+        nos_per_carton: existingItem.uoms?.find(u => u.uom === 'Carton')?.conversion_factor || ''
       }));
       if (existingItem.image) {
         setImagePreview(existingItem.image);
@@ -109,7 +115,10 @@ export default function ItemForm() {
       sub_category: '',
       type: '',
       wholesale_price: '',
-      retail_price: ''
+      retail_price: '',
+      weight_per_unit: '',
+      weight_uom: 'Nos',
+      nos_per_carton: ''
     });
     setImageFile(null);
     setImagePreview('');
@@ -165,7 +174,21 @@ export default function ItemForm() {
         category: formData.category,
         sub_category: formData.sub_category,
         type: formData.type,
+        weight_per_unit: parseFloat(formData.weight_per_unit) || 0,
+        weight_uom: formData.weight_uom || 'Nos',
+        stock_uom: 'Nos',
       };
+
+      if (formData.nos_per_carton) {
+        docParams.uoms = [
+          { uom: 'Nos', conversion_factor: 1 },
+          { uom: 'Carton', conversion_factor: parseFloat(formData.nos_per_carton) }
+        ];
+      } else {
+        docParams.uoms = [
+          { uom: 'Nos', conversion_factor: 1 }
+        ];
+      }
 
       if (imageUrl) docParams.image = imageUrl;
 
@@ -316,6 +339,25 @@ export default function ItemForm() {
                   onChange={(e) => handleInputChange('description', e.target.value)}
                 />
               </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Per Piece Weight"
+                  type="number"
+                  value={formData.weight_per_unit}
+                  onChange={(e) => handleInputChange('weight_per_unit', e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Nos per Carton"
+                  type="number"
+                  value={formData.nos_per_carton}
+                  onChange={(e) => handleInputChange('nos_per_carton', e.target.value)}
+                />
+              </Grid>
             </Grid>
           </Paper>
         </Grid>
@@ -386,10 +428,10 @@ export default function ItemForm() {
           <Paper sx={{ p: 3, mt: 3 }}>
             <Typography variant="h6" mb={2}>Pricing</Typography>
             <Box display="flex" flexDirection="column" gap={2}>
-              <TextField 
-                label="Wholesale Price" 
+              <TextField
+                label="Wholesale Price"
                 type="number"
-                fullWidth 
+                fullWidth
                 size="small"
                 value={formData.wholesale_price || ''}
                 onChange={e => handleInputChange('wholesale_price', e.target.value)}
@@ -398,10 +440,10 @@ export default function ItemForm() {
                   sx: { color: 'warning.main', fontWeight: 'bold' }
                 }}
               />
-              <TextField 
-                label="Retail Price" 
+              <TextField
+                label="Retail Price"
                 type="number"
-                fullWidth 
+                fullWidth
                 size="small"
                 value={formData.retail_price || ''}
                 onChange={e => handleInputChange('retail_price', e.target.value)}
