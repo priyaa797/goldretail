@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Paper, Grid, TextField, MenuItem, Avatar, FormControlLabel, Checkbox, Table, TableBody, TableCell, TableHead, TableRow, TableContainer, Dialog, DialogTitle, DialogContent, IconButton, CircularProgress, TablePagination } from '@mui/material';
+import { Box, Typography, Grid, MenuItem, Avatar, FormControlLabel, Checkbox, Table, TableBody, TableCell, TableHead, TableRow, TableContainer, Dialog, DialogTitle, DialogContent, IconButton, CircularProgress, TablePagination } from '@mui/material';
+import BlankCard from '../../../components/shared/BlankCard';
+
+import CustomTextField from '../../../components/forms/theme-elements/CustomTextField';
+
 import { useFrappeGetDocList, useFrappeGetCall } from 'frappe-react-sdk';
-import { X } from 'lucide-react';
+import { IconX } from '@tabler/icons-react';
 import dayjs from 'dayjs';
 
 export default function StockBalance() {
@@ -80,10 +84,10 @@ export default function StockBalance() {
         <Typography variant="h4" fontWeight="800">Stock Balance</Typography>
       </Box>
 
-      <Paper sx={{ p: 3, mb: 4 }}>
+      <BlankCard><Box  sx={{ p: 3, mb: 4 }}>
         <Grid container spacing={3} alignItems="center">
           <Grid item xs={12} md={4}>
-            <TextField
+            <CustomTextField
               select
               fullWidth
               label="Warehouse Filter"
@@ -92,10 +96,10 @@ export default function StockBalance() {
             >
               <MenuItem value="">All Warehouses</MenuItem>
               {warehouses?.map(w => <MenuItem key={w.name} value={w.name}>{w.name}</MenuItem>)}
-            </TextField>
+            </CustomTextField>
           </Grid>
           <Grid item xs={12} md={4}>
-            <TextField
+            <CustomTextField
               select
               fullWidth
               label="Item Filter"
@@ -104,7 +108,7 @@ export default function StockBalance() {
             >
               <MenuItem value="">All Items</MenuItem>
               {items?.map(i => <MenuItem key={i.item_code} value={i.item_code}>{i.item_code}</MenuItem>)}
-            </TextField>
+            </CustomTextField>
           </Grid>
           <Grid item xs={12} md={4}>
             <FormControlLabel
@@ -119,9 +123,9 @@ export default function StockBalance() {
             />
           </Grid>
         </Grid>
-      </Paper>
+      </Box></BlankCard>
 
-      <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+      <BlankCard><Box  sx={{ width: '100%', overflow: 'hidden' }}>
         <TableContainer sx={{ maxHeight: 'calc(100vh - 300px)' }}>
           <Table stickyHeader aria-label="stock balance table">
             <TableHead>
@@ -175,7 +179,7 @@ export default function StockBalance() {
             </TableBody>
           </Table>
         </TableContainer>
-      </Paper>
+      </Box></BlankCard>
 
       {/* Ledger Modal */}
       <Dialog 
@@ -196,7 +200,7 @@ export default function StockBalance() {
             )}
           </Box>
           <IconButton onClick={() => setLedgerModalOpen(false)}>
-            <X size={20} />
+            <IconX size={20} />
           </IconButton>
         </DialogTitle>
         <DialogContent dividers>

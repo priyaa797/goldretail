@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, Button, Typography, Paper, Grid, TextField, 
-  Table, TableBody, TableCell, TableHead, TableRow, TableContainer,
-  FormControlLabel, Checkbox, Dialog, DialogTitle, DialogContent, DialogActions, DialogContentText
-} from '@mui/material';
+import { Box, Button, Typography, Grid, Table, TableBody, TableCell, TableHead, TableRow, TableContainer, FormControlLabel, Checkbox, Dialog, DialogTitle, DialogContent, DialogActions, DialogContentText } from '@mui/material';
+import BlankCard from '../../components/shared/BlankCard';
+
+import CustomTextField from '../../components/forms/theme-elements/CustomTextField';
+
 import { useFrappeGetCall, useFrappePostCall } from 'frappe-react-sdk';
-import { Receipt, Clock } from 'lucide-react';
+import { IconReceipt, IconClock } from '@tabler/icons-react';
 import toast from 'react-hot-toast';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router';
@@ -78,10 +78,10 @@ export default function PaymentScreen() {
         <Typography variant="h5" fontWeight="bold">Payments & Outstanding</Typography>
       </Box>
 
-      <Paper sx={{ p: 3, mb: 4 }}>
+      <BlankCard><Box  sx={{ p: 3, mb: 4 }}>
         <Grid container spacing={3} alignItems="center">
           <Grid item xs={12} md={6}>
-            <TextField
+            <CustomTextField
               fullWidth
               label="Search Customer"
               variant="outlined"
@@ -102,9 +102,9 @@ export default function PaymentScreen() {
             />
           </Grid>
         </Grid>
-      </Paper>
+      </Box></BlankCard>
 
-      <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+      <BlankCard><Box  sx={{ width: '100%', overflow: 'hidden' }}>
         <TableContainer sx={{ maxHeight: 'calc(100vh - 300px)' }}>
           <Table stickyHeader aria-label="payments table">
             <TableHead>
@@ -141,7 +141,7 @@ export default function PaymentScreen() {
                         variant="contained" 
                         color="primary" 
                         size="small" 
-                        startIcon={<Receipt size={16} />}
+                        startIcon={<IconReceipt size={16} />}
                         onClick={() => handleOpenPay(row)}
                         disabled={row.total_outstanding <= 0}
                       >
@@ -151,7 +151,7 @@ export default function PaymentScreen() {
                         variant="outlined" 
                         color="secondary" 
                         size="small" 
-                        startIcon={<Clock size={16} />}
+                        startIcon={<IconClock size={16} />}
                         onClick={() => navigate(`/payment/${encodeURIComponent(row.customer)}/history`)}
                       >
                         History
@@ -170,7 +170,7 @@ export default function PaymentScreen() {
             </TableBody>
           </Table>
         </TableContainer>
-      </Paper>
+      </Box></BlankCard>
 
       {/* Payment Dialog */}
       <Dialog open={payModalOpen} onClose={handleClosePay} maxWidth="xs" fullWidth>
@@ -180,14 +180,14 @@ export default function PaymentScreen() {
             Enter an amount to automatically settle outstanding Sales Invoices for <strong>{selectedCustomer?.customer}</strong> in FIFO order.
           </DialogContentText>
           
-          <Paper variant="outlined" sx={{ p: 2, mb: 3, bgcolor: 'background.default' }}>
+          <BlankCard><Box  variant="outlined" sx={{ p: 2, mb: 3, bgcolor: 'background.default' }}>
             <Typography variant="body2" color="text.secondary">Current Outstanding</Typography>
             <Typography variant="h5" fontWeight="bold" color="error.main">
               ₹{selectedCustomer?.total_outstanding?.toLocaleString()}
             </Typography>
-          </Paper>
+          </Box></BlankCard>
 
-          <TextField
+          <CustomTextField
             autoFocus
             fullWidth
             type="number"

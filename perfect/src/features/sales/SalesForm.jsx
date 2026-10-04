@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Button, Typography, Paper, Grid, TextField, MenuItem, IconButton, Table, TableBody, TableCell, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, createFilterOptions } from '@mui/material';
+import { Box, Button, Typography, Grid, MenuItem, IconButton, Table, TableBody, TableCell, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, createFilterOptions } from '@mui/material';
+import BlankCard from '../../components/shared/BlankCard';
+
+import CustomTextField from '../../components/forms/theme-elements/CustomTextField';
+
 import { useFrappePostCall, useFrappeGetDocList, useFrappeGetCall } from 'frappe-react-sdk';
 import { useNavigate } from 'react-router';
-import { Trash2, Save, Camera } from 'lucide-react';
+import { IconTrash, IconDeviceFloppy, IconCamera } from '@tabler/icons-react';
 import toast from 'react-hot-toast';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 
@@ -14,7 +18,7 @@ export default function SalesForm() {
   const navigate = useNavigate();
   const [customer, setCustomer] = useState('');
   const [priceList, setPriceList] = useState('Wholesale');
-  const [items, setItems] = useState([{ item_code: '', item_name: '', description: '', qty: '', rate: 0, user_rate: '', carton: '', packing: '', carton_weight: '', discount: '' }]);
+  const [items, setItems] = useState([{ item_code: '', item_name: '', description: '', qty: '', rate: 0, user_rate: '', carton: '', packing: '', total_weight: '', discount: '' }]);
 
   const { data: customers } = useFrappeGetDocList('Customer', { fields: ['name', 'customer_group', 'default_price_list'], limit: 10000 });
   const { data: customerGroups } = useFrappeGetDocList('Customer Group', { fields: ['name', 'default_price_list'], limit: 1000 });
@@ -76,7 +80,11 @@ export default function SalesForm() {
             description: fullItem?.description || itemData.description || '',
             qty: '',
             rate: getPrice(itemData.item_code) || fullItem?.standard_rate || itemData.standard_rate || 0,
-            user_rate: ''
+            user_rate: '',
+            weight_per_unit: fullItem?.weight_per_unit || itemData.weight_per_unit || 0,
+            packing: fullItem?.packing_from_item || itemData.packing_from_item || '',
+            carton: '',
+            total_weight: ''
           };
 
           if (items.length === 1 && items[0].item_code === '') {
@@ -132,7 +140,7 @@ export default function SalesForm() {
           description: i.description,
           carton: Number(i.carton) || 0,
           packing: Number(i.packing) || 0,
-          carton_weight: Number(i.carton_weight) || 0
+          total_weight: Number(i.total_weight) || 0
         };
       }),
       taxes_and_charges: `Output GST In-state - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`,
@@ -174,7 +182,7 @@ export default function SalesForm() {
     );
   };
 
-  const addItem = () => setItems([...items, { item_code: '', item_name: '', description: '', qty: '', rate: 0, user_rate: '', carton: '', packing: '', carton_weight: '', discount: '' }]);
+  const addItem = () => setItems([...items, { item_code: '', item_name: '', description: '', qty: '', rate: 0, user_rate: '', carton: '', packing: '', total_weight: '', discount: '' }]);
   const removeItem = (index) => setItems(items.filter((_, i) => i !== index));
 
   const stripHtml = (html) => {
@@ -187,13 +195,13 @@ export default function SalesForm() {
     <Box sx={{ width: '100%', maxWidth: '100%', minWidth: 0 }}>
       <Box display="flex" justifyContent="space-between" mb={3}>
         <Typography variant="h5" fontWeight="bold">New Sale</Typography>
-        <Button variant="contained" startIcon={<Save size={18} />} onClick={handleSave}>Save & Submit</Button>
+        <Button variant="contained" startIcon={<IconDeviceFloppy size={18} />} onClick={handleSave}>Save & Submit</Button>
       </Box>
 
-      <Paper sx={{ p: 3, mb: 3 }}>
+      <BlankCard><Box  sx={{ p: 3, mb: 3 }}>
         <Grid container spacing={3}>
           <Grid item xs={12} md={6}>
-            <TextField
+            <CustomTextField
               select
               fullWidth
               label="Customer"
@@ -217,10 +225,10 @@ export default function SalesForm() {
               }}
             >
               {customers?.map(s => <MenuItem key={s.name} value={s.name}>{s.name}</MenuItem>)}
-            </TextField>
+            </CustomTextField>
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField
+            <CustomTextField
               select
               fullWidth
               label="Price List"
@@ -229,16 +237,16 @@ export default function SalesForm() {
             >
               <MenuItem value="Wholesale">Wholesale</MenuItem>
               <MenuItem value="Retail">Retail</MenuItem>
-            </TextField>
+            </CustomTextField>
           </Grid>
         </Grid>
-      </Paper>
+      </Box></BlankCard>
 
-      <Paper sx={{ p: 3, maxWidth: '100%', overflowX: 'hidden' }}>
+      <BlankCard><Box  sx={{ p: 3, maxWidth: '100%', overflowX: 'hidden' }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
           <Typography variant="h6">Items</Typography>
           <Box display="flex" gap={2}>
-            <TextField
+            <CustomTextField
               size="small"
               placeholder="Scan Barcode & Press Enter"
               value={barcodeInput}
@@ -246,7 +254,7 @@ export default function SalesForm() {
               onKeyDown={handleBarcodeScan}
               sx={{ width: 300 }}
             />
-            <Button variant="outlined" startIcon={<Camera size={18} />} onClick={() => setIsScannerOpen(true)}>
+            <Button variant="outlined" startIcon={<IconCamera size={18} />} onClick={() => setIsScannerOpen(true)}>
               Camera
             </Button>
           </Box>
@@ -262,7 +270,7 @@ export default function SalesForm() {
                 <TableCell sx={{ width: 100 }}>Carton</TableCell>
                 <TableCell sx={{ width: 100 }}>Packing</TableCell>
                 <TableCell sx={{ width: 120 }}>Quantity</TableCell>
-                <TableCell sx={{ width: 120 }}>C. Wt.</TableCell>
+                <TableCell sx={{ width: 120 }}>Total Wt.</TableCell>
                 <TableCell sx={{ width: 120 }}>Rate (System)</TableCell>
                 <TableCell sx={{ width: 120 }}>Rate (User)</TableCell>
                 <TableCell sx={{ width: 120 }}>Gross Amt</TableCell>
@@ -322,9 +330,10 @@ export default function SalesForm() {
                             newItems[idx].rate = getPrice(newValue.item_code) || newValue.standard_rate || 0;
                             newItems[idx].user_rate = '';
                             newItems[idx].carton = '';
-                            newItems[idx].packing = '';
+                            newItems[idx].packing = newValue.packing_from_item || '';
+                            newItems[idx].weight_per_unit = newValue.weight_per_unit || 0;
                             newItems[idx].qty = '';
-                            newItems[idx].carton_weight = '';
+                            newItems[idx].total_weight = '';
                             newItems[idx].discount = '';
                             newItems[idx].gst_percentage = newValue.gst_percentage || 0;
                           } else {
@@ -335,77 +344,67 @@ export default function SalesForm() {
                             newItems[idx].user_rate = '';
                             newItems[idx].carton = '';
                             newItems[idx].packing = '';
+                            newItems[idx].weight_per_unit = 0;
                             newItems[idx].qty = '';
-                            newItems[idx].carton_weight = '';
+                            newItems[idx].total_weight = '';
                             newItems[idx].discount = '';
                             newItems[idx].gst_percentage = 0;
                           }
                           setItems(newItems);
                         }}
-                        renderInput={(params) => <TextField {...params} placeholder="Search Item..." variant="outlined" size="small" />}
+                        renderInput={(params) => <CustomTextField {...params} placeholder="Search Item..." variant="outlined" size="small" />}
                       />
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2">{item.item_name || '-'}</Typography>
                     </TableCell>
                     <TableCell>
-                      <TextField size="small" multiline maxRows={2} placeholder="Description" value={item.description || ''} onChange={e => {
+                      <CustomTextField size="small" multiline maxRows={2} placeholder="Description" value={item.description || ''} onChange={e => {
                         const newItems = [...items];
                         newItems[idx].description = e.target.value;
                         setItems(newItems);
                       }} />
                     </TableCell>
                     <TableCell>
-                      <TextField size="small" value={item.carton} disabled={!!item.qty && !item.carton && !item.packing} onChange={e => {
+                      <CustomTextField size="small" value={item.carton} disabled={!!item.qty && !item.carton} onChange={e => {
                         const val = e.target.value;
                         if (val === '' || /^\d*\.?\d*$/.test(val)) {
                           const newItems = [...items];
                           newItems[idx].carton = val;
                           if (val || newItems[idx].packing) {
-                            newItems[idx].qty = (Number(val) || 0) * (Number(newItems[idx].packing) || 0);
+                            const newQty = (Number(val) || 0) * (Number(newItems[idx].packing) || 0);
+                            newItems[idx].qty = newQty;
+                            newItems[idx].total_weight = newQty * (Number(newItems[idx].weight_per_unit) || 0);
+                          } else {
+                            newItems[idx].qty = '';
+                            newItems[idx].total_weight = '';
                           }
                           setItems(newItems);
                         }
                       }} />
                     </TableCell>
                     <TableCell>
-                      <TextField size="small" value={item.packing} disabled={!!item.qty && !item.carton && !item.packing} onChange={e => {
-                        const val = e.target.value;
-                        if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                          const newItems = [...items];
-                          newItems[idx].packing = val;
-                          if (newItems[idx].carton || val) {
-                            newItems[idx].qty = (Number(newItems[idx].carton) || 0) * (Number(val) || 0);
-                          }
-                          setItems(newItems);
-                        }
-                      }} />
+                      <CustomTextField size="small" value={item.packing} disabled />
                     </TableCell>
                     <TableCell>
-                      <TextField size="small" value={item.qty} disabled={!!item.carton || !!item.packing} onChange={e => {
+                      <CustomTextField size="small" value={item.qty} disabled={!!item.carton} onChange={e => {
                         const val = e.target.value;
                         if (val === '' || /^\d*\.?\d*$/.test(val)) {
                           const newItems = [...items];
                           newItems[idx].qty = val;
+                          newItems[idx].total_weight = (Number(val) || 0) * (Number(newItems[idx].weight_per_unit) || 0);
                           setItems(newItems);
                         }
                       }} />
                     </TableCell>
                     <TableCell>
-                      <TextField size="small" value={item.carton_weight} onChange={e => {
-                        const val = e.target.value;
-                        if (val === '' || /^\d*\.?\d{0,3}$/.test(val)) {
-                          const newItems = [...items];
-                          newItems[idx].carton_weight = val;
-                          setItems(newItems);
-                        }
-                      }} />
+                      <CustomTextField size="small" value={item.total_weight || ((Number(item.qty) || 0) * (Number(item.weight_per_unit) || 0)).toFixed(2)} disabled />
                     </TableCell>
                     <TableCell>
-                      <TextField size="small" value={item.rate} InputProps={{ readOnly: true }} sx={{ bgcolor: 'action.hover' }} />
+                      <CustomTextField size="small" value={item.rate} InputProps={{ readOnly: true }} sx={{ bgcolor: 'action.hover' }} />
                     </TableCell>
                     <TableCell>
-                      <TextField size="small" placeholder="Rate..." value={item.user_rate} onChange={e => {
+                      <CustomTextField size="small" placeholder="Rate..." value={item.user_rate} onChange={e => {
                         const val = e.target.value;
                         if (val === '' || /^\d*\.?\d*$/.test(val)) {
                           const newItems = [...items];
@@ -416,7 +415,7 @@ export default function SalesForm() {
                     </TableCell>
                     <TableCell>₹{grossAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                     <TableCell>
-                      <TextField size="small" placeholder="%" value={item.discount} onChange={e => {
+                      <CustomTextField size="small" placeholder="%" value={item.discount} onChange={e => {
                         const val = e.target.value;
                         if (val === '' || /^\d*\.?\d{0,2}$/.test(val)) {
                           const newItems = [...items];
@@ -430,7 +429,7 @@ export default function SalesForm() {
                     <TableCell>₹{gstAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                     <TableCell>₹{finalNetAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                     <TableCell>
-                      <IconButton color="error" onClick={() => removeItem(idx)}><Trash2 size={18} /></IconButton>
+                      <IconButton color="error" onClick={() => removeItem(idx)}><IconTrash size={18} /></IconButton>
                     </TableCell>
                   </TableRow>
                 );
@@ -439,7 +438,7 @@ export default function SalesForm() {
           </Table>
         </Box>
         <Button sx={{ mt: 2 }} onClick={addItem}>+ Add Row</Button>
-      </Paper>
+      </Box></BlankCard>
 
       <Dialog
         open={isScannerOpen}

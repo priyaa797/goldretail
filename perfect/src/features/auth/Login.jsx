@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { useFrappeAuth } from 'frappe-react-sdk';
 import { useNavigate } from 'react-router';
-import { Box, Button, TextField, Typography, Paper } from '@mui/material';
+import { Box, Button, Typography } from '@mui/material';
+import BlankCard from '../../components/shared/BlankCard';
+
+import CustomTextField from '../../components/forms/theme-elements/CustomTextField';
+
 import toast from 'react-hot-toast';
 
 export default function Login() {
@@ -29,7 +33,7 @@ export default function Login() {
   };
 
   return (
-    <Paper sx={{ p: 4, maxWidth: 400, width: '100%' }}>
+    <BlankCard><Box  sx={{ p: 4, maxWidth: 400, width: '100%' }}>
       <Typography variant="h5" fontWeight="bold" gutterBottom>
         Perfect
       </Typography>
@@ -37,7 +41,7 @@ export default function Login() {
         Enter your details to sign in
       </Typography>
       <form onSubmit={handleSubmit}>
-        <TextField
+        <CustomTextField
           fullWidth
           margin="normal"
           label="Email or Username"
@@ -45,7 +49,7 @@ export default function Login() {
           onChange={(e) => setEmail(e.target.value)}
           required
         />
-        <TextField
+        <CustomTextField
           fullWidth
           margin="normal"
           label="Password"
@@ -58,6 +62,6 @@ export default function Login() {
           Sign In
         </Button>
       </form>
-    </Paper>
+    </Box></BlankCard>
   );
 }

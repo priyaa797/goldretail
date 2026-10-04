@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import {
-  Box, Button, Typography, Paper,
-  Table, TableBody, TableCell, TableHead, TableRow, TableContainer,
-  Avatar, Checkbox, Grid, TextField, Autocomplete, FormControlLabel
-} from '@mui/material';
+import { Box, Button, Typography, Table, TableBody, TableCell, TableHead, TableRow, TableContainer, Avatar, Checkbox, Grid, Autocomplete, FormControlLabel } from '@mui/material';
+import BlankCard from '../../components/shared/BlankCard';
+
+import CustomTextField from '../../components/forms/theme-elements/CustomTextField';
+
 import { useFrappeGetDocList, useFrappePostCall } from 'frappe-react-sdk';
-import { FileText } from 'lucide-react';
+import { IconFileText } from '@tabler/icons-react';
 import toast from 'react-hot-toast';
 
 export default function Catalog() {
@@ -118,7 +118,7 @@ export default function Catalog() {
             <Button
               variant="contained"
               color="secondary"
-              startIcon={<FileText size={18} />}
+              startIcon={<IconFileText size={18} />}
               onClick={handleGeneratePdf}
               disabled={generatingPdf}
             >
@@ -129,14 +129,14 @@ export default function Catalog() {
       </Box>
 
       {/* Filters Section */}
-      <Paper sx={{ p: 2, mb: 3 }}>
+      <BlankCard><Box  sx={{ p: 2, mb: 3 }}>
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} sm={3}>
             <Autocomplete
               options={categories?.map(c => c.name) || []}
               value={category}
               onChange={(e, val) => { setCategory(val); setItemsLoaded(false); }}
-              renderInput={(params) => <TextField {...params} label="Category" size="small" />}
+              renderInput={(params) => <CustomTextField {...params} label="Category" size="small" />}
             />
           </Grid>
           <Grid item xs={12} sm={3}>
@@ -144,7 +144,7 @@ export default function Catalog() {
               options={subCategories?.map(s => s.name) || []}
               value={subCategory}
               onChange={(e, val) => { setSubCategory(val); setItemsLoaded(false); }}
-              renderInput={(params) => <TextField {...params} label="Sub Category" size="small" />}
+              renderInput={(params) => <CustomTextField {...params} label="Sub Category" size="small" />}
             />
           </Grid>
           <Grid item xs={12} sm={3}>
@@ -153,11 +153,11 @@ export default function Catalog() {
               value={priceList}
               onChange={(e, val) => { setPriceList(val || 'Wholesale'); setItemsLoaded(false); }}
               disableClearable
-              renderInput={(params) => <TextField {...params} label="Price List" size="small" />}
+              renderInput={(params) => <CustomTextField {...params} label="Price List" size="small" />}
             />
           </Grid>
           <Grid item xs={12} sm={2}>
-            <TextField
+            <CustomTextField
               label="Discount (%)"
               type="number"
               size="small"
@@ -180,10 +180,10 @@ export default function Catalog() {
             />
           </Grid>
         </Grid>
-      </Paper>
+      </Box></BlankCard>
 
       {itemsLoaded && (
-        <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+        <BlankCard><Box  sx={{ width: '100%', overflow: 'hidden' }}>
           <TableContainer sx={{ maxHeight: 'calc(100vh - 280px)' }}>
             <Table stickyHeader aria-label="catalog list table">
               <TableHead>
@@ -264,7 +264,7 @@ export default function Catalog() {
               </TableBody>
             </Table>
           </TableContainer>
-        </Paper>
+        </Box></BlankCard>
       )}
     </Box>
   );

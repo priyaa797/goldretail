@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
-import { Box, Button, Typography, Paper, Grid, TextField, Autocomplete, InputAdornment, IconButton, Checkbox, FormControlLabel } from '@mui/material';
+import { Box, Button, Typography, Grid, Autocomplete, InputAdornment, IconButton, Checkbox, FormControlLabel } from '@mui/material';
+import BlankCard from '../../components/shared/BlankCard';
+
+import CustomTextField from '../../components/forms/theme-elements/CustomTextField';
+
 import { useFrappeGetDocList, useFrappePostCall, useFrappeGetDoc, useFrappeUpdateDoc } from 'frappe-react-sdk';
-import { Save, Image as ImageIcon, X, ArrowLeft } from 'lucide-react';
+import { IconDeviceFloppy, IconPhoto as ImageIcon, IconX, IconArrowLeft } from '@tabler/icons-react';
 import toast from 'react-hot-toast';
 import { useParams, useNavigate } from 'react-router';
 
@@ -253,7 +257,7 @@ export default function ItemForm() {
     <Box>
       <Box display="flex" justifyContent="space-between" mb={3}>
         <Box display="flex" alignItems="center" gap={2}>
-          <Button startIcon={<ArrowLeft size={18} />} onClick={() => navigate('/master/item')}>
+          <Button startIcon={<IconArrowLeft size={18} />} onClick={() => navigate('/master/item')}>
             Back to List
           </Button>
           <Typography variant="h5" fontWeight="bold">
@@ -262,7 +266,7 @@ export default function ItemForm() {
         </Box>
         <Button
           variant="contained"
-          startIcon={<Save size={18} />}
+          startIcon={<IconDeviceFloppy size={18} />}
           onClick={handleSave}
           disabled={isSubmitting || isLoadingExisting}
         >
@@ -273,12 +277,12 @@ export default function ItemForm() {
       <Grid container spacing={3}>
         {/* Left Column - Form Fields */}
         <Grid item xs={12} md={8}>
-          <Paper sx={{ p: 3 }}>
+          <BlankCard><Box  sx={{ p: 3 }}>
             <Typography variant="h6" mb={3}>Basic Information</Typography>
 
             <Grid container spacing={3}>
               <Grid item xs={12} sm={6}>
-                <TextField
+                <CustomTextField
                   fullWidth
                   label="Item Code *"
                   value={formData.item_code}
@@ -287,7 +291,7 @@ export default function ItemForm() {
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField
+                <CustomTextField
                   fullWidth
                   label="Item Name *"
                   value={formData.item_name}
@@ -300,7 +304,7 @@ export default function ItemForm() {
                   options={itemGroups?.map(g => g.name) || []}
                   value={formData.item_group || null}
                   onChange={(e, val) => handleInputChange('item_group', val || '')}
-                  renderInput={(params) => <TextField {...params} label="Item Group *" />}
+                  renderInput={(params) => <CustomTextField {...params} label="Item Group *" />}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -308,7 +312,7 @@ export default function ItemForm() {
                   options={categories?.map(c => c.name) || []}
                   value={formData.category || null}
                   onChange={(e, val) => handleInputChange('category', val || '')}
-                  renderInput={(params) => <TextField {...params} label="Category" />}
+                  renderInput={(params) => <CustomTextField {...params} label="Category" />}
                 />
               </Grid>
 
@@ -317,7 +321,7 @@ export default function ItemForm() {
                   options={subCategories?.map(s => s.name) || []}
                   value={formData.sub_category || null}
                   onChange={(e, val) => handleInputChange('sub_category', val || '')}
-                  renderInput={(params) => <TextField {...params} label="Sub Category" />}
+                  renderInput={(params) => <CustomTextField {...params} label="Sub Category" />}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -325,12 +329,12 @@ export default function ItemForm() {
                   options={itemTypes?.map(t => t.name) || []}
                   value={formData.type || null}
                   onChange={(e, val) => handleInputChange('type', val || '')}
-                  renderInput={(params) => <TextField {...params} label="Type" />}
+                  renderInput={(params) => <CustomTextField {...params} label="Type" />}
                 />
               </Grid>
 
               <Grid item xs={12}>
-                <TextField
+                <CustomTextField
                   fullWidth
                   multiline
                   rows={4}
@@ -341,7 +345,7 @@ export default function ItemForm() {
               </Grid>
 
               <Grid item xs={12} sm={6}>
-                <TextField
+                <CustomTextField
                   fullWidth
                   label="Per Piece Weight"
                   type="number"
@@ -350,7 +354,7 @@ export default function ItemForm() {
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField
+                <CustomTextField
                   fullWidth
                   label="Nos per Carton"
                   type="number"
@@ -359,12 +363,12 @@ export default function ItemForm() {
                 />
               </Grid>
             </Grid>
-          </Paper>
+          </Box></BlankCard>
         </Grid>
 
         {/* Right Column - Image Upload & Fixed Values Display */}
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, mb: 3 }}>
+          <BlankCard><Box  sx={{ p: 3, mb: 3 }}>
             <Typography variant="h6" mb={2}>Item Image</Typography>
 
             <Box
@@ -394,12 +398,12 @@ export default function ItemForm() {
                       setImagePreview('');
                     }}
                   >
-                    <X size={16} />
+                    <IconX size={16} />
                   </IconButton>
                 </>
               ) : (
                 <Box>
-                  <ImageIcon size={48} style={{ opacity: 0.3, marginBottom: 8 }} />
+                  <IconPhoto size={48} style={{ opacity: 0.3, marginBottom: 8 }} />
                   <Typography variant="body2" color="text.secondary" mb={2}>Upload item image</Typography>
                   <Button variant="outlined" component="label" size="small">
                     Select File
@@ -408,9 +412,9 @@ export default function ItemForm() {
                 </Box>
               )}
             </Box>
-          </Paper>
+          </Box></BlankCard>
 
-          <Paper sx={{ p: 3 }}>
+          <BlankCard><Box  sx={{ p: 3 }}>
             <Typography variant="h6" mb={2}>Fixed Settings</Typography>
             <Box display="flex" flexDirection="column" gap={1.5}>
               <Box display="flex" justifyContent="space-between">
@@ -422,13 +426,13 @@ export default function ItemForm() {
                 <Typography variant="body2" fontWeight="bold">999999</Typography>
               </Box>
             </Box>
-          </Paper>
+          </Box></BlankCard>
 
 
-          <Paper sx={{ p: 3, mt: 3 }}>
+          <BlankCard><Box  sx={{ p: 3, mt: 3 }}>
             <Typography variant="h6" mb={2}>Pricing</Typography>
             <Box display="flex" flexDirection="column" gap={2}>
-              <TextField
+              <CustomTextField
                 label="Wholesale Price"
                 type="number"
                 fullWidth
@@ -440,7 +444,7 @@ export default function ItemForm() {
                   sx: { color: 'warning.main', fontWeight: 'bold' }
                 }}
               />
-              <TextField
+              <CustomTextField
                 label="Retail Price"
                 type="number"
                 fullWidth
@@ -453,7 +457,7 @@ export default function ItemForm() {
                 }}
               />
             </Box>
-          </Paper>
+          </Box></BlankCard>
         </Grid>
       </Grid>
     </Box>

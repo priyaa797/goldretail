@@ -1,11 +1,9 @@
 import React from 'react';
-import { 
-  Box, Button, Typography, Paper, 
-  Table, TableBody, TableCell, TableHead, TableRow, TableContainer,
-  Avatar
-} from '@mui/material';
+import { Box, Button, Typography, Table, TableBody, TableCell, TableHead, TableRow, TableContainer, Avatar } from '@mui/material';
+import BlankCard from '../../components/shared/BlankCard';
+
 import { useFrappeGetDocList } from 'frappe-react-sdk';
-import { Plus } from 'lucide-react';
+import { IconPlus } from '@tabler/icons-react';
 import { useNavigate } from 'react-router';
 
 export default function ItemList() {
@@ -29,14 +27,14 @@ export default function ItemList() {
         <Typography variant="h5" fontWeight="bold">Item Master</Typography>
         <Button 
           variant="contained" 
-          startIcon={<Plus size={18} />} 
+          startIcon={<IconPlus size={18} />} 
           onClick={() => navigate('/master/item/new')}
         >
           New Item
         </Button>
       </Box>
 
-      <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+      <BlankCard><Box  sx={{ width: '100%', overflow: 'hidden' }}>
         <TableContainer sx={{ maxHeight: 'calc(100vh - 200px)' }}>
           <Table stickyHeader aria-label="item list table">
             <TableHead>
@@ -100,7 +98,7 @@ export default function ItemList() {
             </TableBody>
           </Table>
         </TableContainer>
-      </Paper>
+      </Box></BlankCard>
     </Box>
   );
 }

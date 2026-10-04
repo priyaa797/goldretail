@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, Button, Typography, Paper, 
-  Table, TableBody, TableCell, TableHead, TableRow, TableContainer
-} from '@mui/material';
+import { Box, Button, Typography, Table, TableBody, TableCell, TableHead, TableRow, TableContainer } from '@mui/material';
+import BlankCard from '../../components/shared/BlankCard';
+
 import { useFrappeGetCall } from 'frappe-react-sdk';
-import { ArrowLeft } from 'lucide-react';
+import { IconArrowLeft } from '@tabler/icons-react';
 import dayjs from 'dayjs';
 import { useParams, useNavigate } from 'react-router';
 
@@ -47,7 +46,7 @@ export default function PaymentHistory() {
           onClick={() => navigate('/payment')}
           sx={{ minWidth: 'auto', p: 1 }}
         >
-          <ArrowLeft />
+          <IconArrowLeft />
         </Button>
         <Box>
           <Typography variant="h5" fontWeight="bold">Transaction History</Typography>
@@ -55,7 +54,7 @@ export default function PaymentHistory() {
         </Box>
       </Box>
 
-      <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+      <BlankCard><Box  sx={{ width: '100%', overflow: 'hidden' }}>
         <TableContainer sx={{ maxHeight: 'calc(100vh - 200px)' }}>
           <Table stickyHeader aria-label="payment history table">
             <TableHead>
@@ -103,7 +102,7 @@ export default function PaymentHistory() {
             </TableBody>
           </Table>
         </TableContainer>
-      </Paper>
+      </Box></BlankCard>
     </Box>
   );
 }

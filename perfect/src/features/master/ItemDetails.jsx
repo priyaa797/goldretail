@@ -1,7 +1,9 @@
 import React from 'react';
-import { Box, Button, Typography, Paper, Grid, Avatar, Divider, Chip } from '@mui/material';
+import { Box, Button, Typography, Grid, Avatar, Divider, Chip } from '@mui/material';
+import BlankCard from '../../components/shared/BlankCard';
+
 import { useFrappeGetDoc, useFrappeGetDocList } from 'frappe-react-sdk';
-import { Edit2, ArrowLeft } from 'lucide-react';
+import { IconEdit, IconArrowLeft } from '@tabler/icons-react';
 import { useParams, useNavigate } from 'react-router';
 import Spinner from '../../views/spinner/Spinner';
 
@@ -34,14 +36,14 @@ export default function ItemDetails() {
     <Box>
       <Box display="flex" justifyContent="space-between" mb={3}>
         <Box display="flex" alignItems="center" gap={2}>
-          <Button startIcon={<ArrowLeft size={18} />} onClick={() => navigate('/master/item')}>
+          <Button startIcon={<IconArrowLeft size={18} />} onClick={() => navigate('/master/item')}>
             Back to List
           </Button>
           <Typography variant="h5" fontWeight="bold">Item: {item.item_name}</Typography>
         </Box>
         <Button
           variant="contained"
-          startIcon={<Edit2 size={18} />}
+          startIcon={<IconEdit size={18} />}
           onClick={() => navigate(`/master/item/${encodeURIComponent(item.name)}/edit`)}
         >
           Edit Item
@@ -50,7 +52,7 @@ export default function ItemDetails() {
 
       <Grid container spacing={3}>
         <Grid item xs={12} md={8}>
-          <Paper sx={{ p: 3, mb: 3 }}>
+          <BlankCard><Box  sx={{ p: 3, mb: 3 }}>
             <Typography variant="h6" mb={2}>Overview</Typography>
             <Divider sx={{ mb: 2 }} />
 
@@ -73,9 +75,9 @@ export default function ItemDetails() {
             <Typography variant="body1" mt={1}>
               {stripHtml(item.description) || <Typography variant="body2" color="text.secondary" fontStyle="italic">No description provided.</Typography>}
             </Typography>
-          </Paper>
+          </Box></BlankCard>
 
-          <Paper sx={{ p: 3 }}>
+          <BlankCard><Box  sx={{ p: 3 }}>
             <Typography variant="h6" mb={2}>Categorization</Typography>
             <Divider sx={{ mb: 2 }} />
             <Grid container spacing={3}>
@@ -92,9 +94,9 @@ export default function ItemDetails() {
                 <Typography variant="subtitle1" fontWeight="bold">{item.type || '-'}</Typography>
               </Grid>
             </Grid>
-          </Paper>
+          </Box></BlankCard>
 
-          <Paper sx={{ p: 3, mt: 3 }}>
+          <BlankCard><Box  sx={{ p: 3, mt: 3 }}>
             <Typography variant="h6" mb={2}>Specifications</Typography>
             <Divider sx={{ mb: 2 }} />
             <Grid container spacing={3}>
@@ -111,11 +113,11 @@ export default function ItemDetails() {
                 </Typography>
               </Grid>
             </Grid>
-          </Paper>
+          </Box></BlankCard>
         </Grid>
 
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, mb: 3, textAlign: 'center' }}>
+          <BlankCard><Box  sx={{ p: 3, mb: 3, textAlign: 'center' }}>
             <Typography variant="h6" mb={2} textAlign="left">Item Image</Typography>
             <Box display="flex" justifyContent="center" mb={2}>
               <Avatar
@@ -127,9 +129,9 @@ export default function ItemDetails() {
                 {!item.image && <Typography color="text.secondary">No Image</Typography>}
               </Avatar>
             </Box>
-          </Paper>
+          </Box></BlankCard>
 
-          <Paper sx={{ p: 3 }}>
+          <BlankCard><Box  sx={{ p: 3 }}>
             <Typography variant="h6" mb={2}>Settings</Typography>
             <Divider sx={{ mb: 2 }} />
             <Box display="flex" flexDirection="column" gap={2}>
@@ -142,9 +144,9 @@ export default function ItemDetails() {
                 <Typography variant="body2" fontWeight="bold">{item.gst_hsn_code || '-'}</Typography>
               </Box>
             </Box>
-          </Paper>
+          </Box></BlankCard>
 
-          <Paper sx={{ p: 3, mt: 3 }}>
+          <BlankCard><Box  sx={{ p: 3, mt: 3 }}>
             <Typography variant="h6" mb={2}>Pricing</Typography>
             <Divider sx={{ mb: 2 }} />
             <Box display="flex" flexDirection="column" gap={2}>
@@ -161,7 +163,7 @@ export default function ItemDetails() {
                 </Typography>
               </Box>
             </Box>
-          </Paper>
+          </Box></BlankCard>
         </Grid>
       </Grid>
     </Box>

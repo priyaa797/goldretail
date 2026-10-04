@@ -1,9 +1,11 @@
 import React from 'react';
-import { Box, Button, Typography, Paper, Table, TableBody, TableCell, TableHead, TableRow, TableContainer, Chip } from '@mui/material';
+import { Box, Button, Typography, Table, TableBody, TableCell, TableHead, TableRow, TableContainer, Chip } from '@mui/material';
+import BlankCard from '../../components/shared/BlankCard';
+
 import { useFrappeGetDocList } from 'frappe-react-sdk';
 import { useNavigate } from 'react-router';
 import dayjs from 'dayjs';
-import { Plus } from 'lucide-react';
+import { IconPlus } from '@tabler/icons-react';
 
 export default function PurchaseList() {
   const navigate = useNavigate();
@@ -16,9 +18,9 @@ export default function PurchaseList() {
     <Box>
       <Box display="flex" justifyContent="space-between" mb={3}>
         <Typography variant="h5" fontWeight="bold">Purchase Invoices</Typography>
-        <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => navigate('/purchase/new')}>New Purchase</Button>
+        <Button variant="contained" startIcon={<IconPlus size={18} />} onClick={() => navigate('/purchase/new')}>New Purchase</Button>
       </Box>
-      <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+      <BlankCard><Box  sx={{ width: '100%', overflow: 'hidden' }}>
         <TableContainer sx={{ maxHeight: 'calc(100vh - 200px)' }}>
           <Table stickyHeader aria-label="purchase table">
             <TableHead>
@@ -56,7 +58,7 @@ export default function PurchaseList() {
             </TableBody>
           </Table>
         </TableContainer>
-      </Paper>
+      </Box></BlankCard>
     </Box>
   );
 }

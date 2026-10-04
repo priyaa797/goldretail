@@ -1,5 +1,7 @@
 import React from 'react';
-import { Box, Typography, Paper, Table, TableBody, TableCell, TableHead, TableRow, TableContainer } from '@mui/material';
+import { Box, Typography, Table, TableBody, TableCell, TableHead, TableRow, TableContainer } from '@mui/material';
+import BlankCard from '../../../components/shared/BlankCard';
+
 import { useFrappeGetCall } from 'frappe-react-sdk';
 
 export default function CustomerOutstanding() {
@@ -21,7 +23,7 @@ export default function CustomerOutstanding() {
       <Box display="flex" justifyContent="space-between" mb={3}>
         <Typography variant="h5" fontWeight="bold">Customer Outstanding</Typography>
       </Box>
-      <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+      <BlankCard><Box  sx={{ width: '100%', overflow: 'hidden' }}>
         <TableContainer sx={{ maxHeight: 'calc(100vh - 200px)' }}>
           <Table stickyHeader aria-label="customer outstanding table">
             <TableHead>
@@ -45,7 +47,7 @@ export default function CustomerOutstanding() {
             </TableBody>
           </Table>
         </TableContainer>
-      </Paper>
+      </Box></BlankCard>
     </Box>
   );
 }

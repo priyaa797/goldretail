@@ -1,8 +1,10 @@
 import React from 'react';
-import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, Grid, CircularProgress, Chip } from '@mui/material';
+import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, Grid, CircularProgress, Chip } from '@mui/material';
+import BlankCard from '../../components/shared/BlankCard';
+
 import { useParams, useNavigate } from 'react-router';
 import { useFrappeGetDoc } from 'frappe-react-sdk';
-import { ArrowLeft, Printer } from 'lucide-react';
+import { IconArrowLeft, IconPrinter } from '@tabler/icons-react';
 import dayjs from 'dayjs';
 
 export default function SalesDetails() {
@@ -22,7 +24,7 @@ export default function SalesDetails() {
   if (error || !doc) {
     return (
       <Box>
-        <Button startIcon={<ArrowLeft size={18} />} onClick={() => navigate('/sales')} sx={{ mb: 2 }}>Back to Saless</Button>
+        <Button startIcon={<IconArrowLeft size={18} />} onClick={() => navigate('/sales')} sx={{ mb: 2 }}>Back to Saless</Button>
         <Typography color="error">Error loading invoice details.</Typography>
       </Box>
     );
@@ -52,25 +54,25 @@ export default function SalesDetails() {
       <Box className="no-print">
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Box display="flex" alignItems="center" gap={2}>
-          <Button startIcon={<ArrowLeft size={18} />} onClick={() => navigate('/sales')} color="inherit">Back</Button>
+          <Button startIcon={<IconArrowLeft size={18} />} onClick={() => navigate('/sales')} color="inherit">Back</Button>
           <Typography variant="h5" fontWeight="bold">{doc.name}</Typography>
           <Chip label={doc.status} color={doc.status === 'Paid' ? 'success' : doc.status === 'Unpaid' ? 'error' : 'warning'} size="small" />
         </Box>
-        <Button variant="outlined" startIcon={<Printer size={18} />} onClick={() => window.print()}>Print</Button>
+        <Button variant="outlined" startIcon={<IconPrinter size={18} />} onClick={() => window.print()}>Print</Button>
       </Box>
 
       <Grid container spacing={3} mb={4}>
         <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3, height: '100%' }}>
+          <BlankCard><Box  sx={{ p: 3, height: '100%' }}>
             <Typography variant="subtitle2" color="text.secondary" gutterBottom>Customer Details</Typography>
             <Typography variant="h6" fontWeight="bold">{doc.customer}</Typography>
             {doc.customer_name && doc.customer_name !== doc.customer && (
               <Typography variant="body2" color="text.secondary">{doc.customer_name}</Typography>
             )}
-          </Paper>
+          </Box></BlankCard>
         </Grid>
         <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3, height: '100%' }}>
+          <BlankCard><Box  sx={{ p: 3, height: '100%' }}>
             <Typography variant="subtitle2" color="text.secondary" gutterBottom>Invoice Info</Typography>
             <Box display="flex" justifyContent="space-between" mb={1}>
               <Typography variant="body2" color="text.secondary">Posting Date</Typography>
@@ -84,11 +86,11 @@ export default function SalesDetails() {
               <Typography variant="body2" color="text.secondary">Price List</Typography>
               <Typography variant="body2" fontWeight="500">{doc.selling_price_list || '-'}</Typography>
             </Box>
-          </Paper>
+          </Box></BlankCard>
         </Grid>
       </Grid>
 
-      <Paper sx={{ mb: 4, overflow: 'hidden', maxWidth: '100%' }}>
+      <BlankCard><Box  sx={{ mb: 4, overflow: 'hidden', maxWidth: '100%' }}>
         <TableContainer sx={{ overflowX: 'auto', width: '100%' }}>
           <Table sx={{ minWidth: 1800 }}>
             <TableHead sx={{ bgcolor: 'background.default' }}>
@@ -151,7 +153,7 @@ export default function SalesDetails() {
             </TableBody>
           </Table>
         </TableContainer>
-      </Paper>
+      </Box></BlankCard>
 
       {(() => {
         const gstBreakup = {};
@@ -189,7 +191,7 @@ export default function SalesDetails() {
         if (!hasTaxes) return null;
 
         return (
-          <Paper sx={{ mb: 4, overflow: 'hidden' }}>
+          <BlankCard><Box  sx={{ mb: 4, overflow: 'hidden' }}>
             <TableContainer>
               <Table size="small">
                 <TableHead sx={{ bgcolor: 'background.default' }}>
@@ -216,13 +218,13 @@ export default function SalesDetails() {
                 </TableBody>
               </Table>
             </TableContainer>
-          </Paper>
+          </Box></BlankCard>
         );
       })()}
 
 
       <Box display="flex" justifyContent="flex-end">
-        <Paper sx={{ p: 3, width: { xs: '100%', md: '300px' } }}>
+        <BlankCard><Box  sx={{ p: 3, width: { xs: '100%', md: '300px' } }}>
           <Box display="flex" justifyContent="space-between" mb={1}>
             <Typography variant="body2" color="text.secondary">Total</Typography>
             <Typography variant="body2">₹{doc.total}</Typography>
@@ -251,11 +253,11 @@ export default function SalesDetails() {
             <Typography variant="body2" color="error">Outstanding</Typography>
             <Typography variant="body2" color="error" fontWeight="bold">₹{doc.outstanding_amount}</Typography>
           </Box>
-        </Paper>
+        </Box></BlankCard>
       </Box>
 
       {/* Meta Information Section */}
-      <Paper sx={{ mt: 4, p: 3, bgcolor: 'background.default', border: '1px dashed', borderColor: 'divider', boxShadow: 'none' }}>
+      <BlankCard><Box  sx={{ mt: 4, p: 3, bgcolor: 'background.default', border: '1px dashed', borderColor: 'divider', boxShadow: 'none' }}>
         <Typography variant="subtitle2" color="text.secondary" gutterBottom>Document Info</Typography>
         <Grid container spacing={2}>
           <Grid item xs={6} md={3}>
@@ -275,7 +277,7 @@ export default function SalesDetails() {
             <Typography variant="body2" fontWeight="600">{dayjs(doc.modified).format('DD MMM YYYY, HH:mm')}</Typography>
           </Grid>
         </Grid>
-      </Paper>
+      </Box></BlankCard>
       </Box>
 
       {/* Print Only Section */}

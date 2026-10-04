@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Button, Typography, Paper, Grid, TextField, MenuItem, IconButton, Table, TableBody, TableCell, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, createFilterOptions } from '@mui/material';
+import { Box, Button, Typography, Grid, MenuItem, IconButton, Table, TableBody, TableCell, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, createFilterOptions } from '@mui/material';
+import BlankCard from '../../components/shared/BlankCard';
+
+import CustomTextField from '../../components/forms/theme-elements/CustomTextField';
+
 import { useFrappePostCall, useFrappeGetDocList, useFrappeGetCall } from 'frappe-react-sdk';
 import { useNavigate } from 'react-router';
-import { Trash2, Save, Camera } from 'lucide-react';
+import { IconTrash, IconDeviceFloppy, IconCamera } from '@tabler/icons-react';
 import toast from 'react-hot-toast';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 
@@ -14,7 +18,7 @@ export default function PurchaseForm() {
   const navigate = useNavigate();
   const [supplier, setSupplier] = useState('');
   const [billNo, setBillNo] = useState('');
-  const [items, setItems] = useState([{ item_code: '', item_name: '', description: '', qty: '', rate: 0, carton: '', packing: '', carton_weight: '', discount: '' }]);
+  const [items, setItems] = useState([{ item_code: '', item_name: '', description: '', qty: '', rate: 0, carton: '', packing: '', total_weight: '', discount: '' }]);
 
   const { data: suppliers } = useFrappeGetDocList('Supplier', { fields: ['name'] });
   const { data: itemListResponse, mutate: mutateItemList } = useFrappeGetCall('goldretail.api.item_barcode.get_all_items');
@@ -122,7 +126,7 @@ export default function PurchaseForm() {
           description: i.description,
           carton: Number(i.carton) || 0,
           packing: Number(i.packing) || 0,
-          carton_weight: Number(i.carton_weight) || 0
+          total_weight: Number(i.total_weight) || 0
         };
       }),
       taxes_and_charges: `Input GST In-state - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`,
@@ -147,7 +151,7 @@ export default function PurchaseForm() {
     );
   };
 
-  const addItem = () => setItems([...items, { item_code: '', item_name: '', description: '', qty: '', rate: 0, carton: '', packing: '', carton_weight: '', discount: '' }]);
+  const addItem = () => setItems([...items, { item_code: '', item_name: '', description: '', qty: '', rate: 0, carton: '', packing: '', total_weight: '', discount: '', weight_per_unit: 0 }]);
   const removeItem = (index) => setItems(items.filter((_, i) => i !== index));
 
   const stripHtml = (html) => {
@@ -212,13 +216,13 @@ export default function PurchaseForm() {
     <Box>
       <Box display="flex" justifyContent="space-between" mb={3}>
         <Typography variant="h5" fontWeight="bold">New Purchase</Typography>
-        <Button variant="contained" startIcon={<Save size={18} />} onClick={handleSave}>Save & Submit</Button>
+        <Button variant="contained" startIcon={<IconDeviceFloppy size={18} />} onClick={handleSave}>Save & Submit</Button>
       </Box>
 
-      <Paper sx={{ p: 3, mb: 3 }}>
+      <BlankCard><Box sx={{ p: 3, mb: 3 }}>
         <Grid container spacing={3}>
           <Grid item xs={12} md={6}>
-            <TextField
+            <CustomTextField
               select
               fullWidth
               label="Supplier"
@@ -226,10 +230,10 @@ export default function PurchaseForm() {
               onChange={e => setSupplier(e.target.value)}
             >
               {suppliers?.map(s => <MenuItem key={s.name} value={s.name}>{s.name}</MenuItem>)}
-            </TextField>
+            </CustomTextField>
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField
+            <CustomTextField
               fullWidth
               label="Supplier Invoice No (Bill No)"
               value={billNo}
@@ -238,13 +242,13 @@ export default function PurchaseForm() {
             />
           </Grid>
         </Grid>
-      </Paper>
+      </Box></BlankCard>
 
-      <Paper sx={{ p: 3 }}>
+      <BlankCard><Box sx={{ p: 3 }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
           <Typography variant="h6">Items</Typography>
           <Box display="flex" gap={2}>
-            <TextField
+            <CustomTextField
               size="small"
               placeholder="Scan Barcode & Press Enter"
               value={barcodeInput}
@@ -252,7 +256,7 @@ export default function PurchaseForm() {
               onKeyDown={handleBarcodeScan}
               sx={{ width: 300 }}
             />
-            <Button variant="outlined" startIcon={<Camera size={18} />} onClick={() => setIsScannerOpen(true)}>
+            <Button variant="outlined" startIcon={<IconCamera size={18} />} onClick={() => setIsScannerOpen(true)}>
               Camera
             </Button>
           </Box>
@@ -267,7 +271,7 @@ export default function PurchaseForm() {
               <TableCell sx={{ width: 100 }}>Carton</TableCell>
               <TableCell sx={{ width: 100 }}>Packing</TableCell>
               <TableCell sx={{ width: 120 }}>Quantity</TableCell>
-              <TableCell sx={{ width: 120 }}>C. Wt.</TableCell>
+              <TableCell sx={{ width: 120 }}>Total Wt.</TableCell>
               <TableCell sx={{ width: 120 }}>Rate</TableCell>
               <TableCell sx={{ width: 120 }}>Gross Amt</TableCell>
               <TableCell sx={{ width: 100 }}>Discount (%)</TableCell>
@@ -328,74 +332,79 @@ export default function PurchaseForm() {
                         newItems[idx].item_name = newValue.item_name;
                         newItems[idx].description = newValue.description;
                         newItems[idx].gst_percentage = newValue.gst_percentage || 0;
+                        newItems[idx].packing = newValue.packing_from_item || '';
+                        newItems[idx].weight_per_unit = newValue.weight_per_unit || 0;
+                        newItems[idx].carton = '';
+                        newItems[idx].qty = '';
+                        newItems[idx].total_weight = '';
                       } else {
                         newItems[idx].item_code = '';
                         newItems[idx].item_name = '';
                         newItems[idx].description = '';
                         newItems[idx].gst_percentage = 0;
+                        newItems[idx].packing = '';
+                        newItems[idx].weight_per_unit = 0;
+                        newItems[idx].carton = '';
+                        newItems[idx].qty = '';
+                        newItems[idx].total_weight = '';
                       }
                       setItems(newItems);
                     }}
-                    renderInput={(params) => <TextField {...params} placeholder="Search Item..." variant="outlined" size="small" />}
+                    renderInput={(params) => <CustomTextField {...params} placeholder="Search Item..." variant="outlined" size="small" />}
                   />
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2">{item.item_name || '-'}</Typography>
                 </TableCell>
                 <TableCell>
-                  <TextField size="small" multiline maxRows={2} placeholder="Description" value={item.description || ''} onChange={e => {
+                  <CustomTextField size="small" multiline maxRows={2} placeholder="Description" value={item.description || ''} onChange={e => {
                     const newItems = [...items];
                     newItems[idx].description = e.target.value;
                     setItems(newItems);
                   }} />
                 </TableCell>
                 <TableCell>
-                  <TextField size="small" value={item.carton} disabled={!!item.qty && !item.carton && !item.packing} onChange={e => {
+                  <CustomTextField size="small" value={item.carton} disabled={!!item.qty && !item.carton} onChange={e => {
                     const val = e.target.value;
                     if (val === '' || /^\d*\.?\d*$/.test(val)) {
                       const newItems = [...items];
                       newItems[idx].carton = val;
+                      if (val || newItems[idx].packing) {
+                        const newQty = (Number(val) || 0) * (Number(newItems[idx].packing) || 0);
+                        newItems[idx].qty = newQty;
+                        newItems[idx].total_weight = newQty * (Number(newItems[idx].weight_per_unit) || 0);
+                      } else {
+                        newItems[idx].qty = '';
+                        newItems[idx].total_weight = '';
+                      }
                       setItems(newItems);
                     }
                   }} />
                 </TableCell>
                 <TableCell>
-                  <TextField size="small" value={item.packing} disabled={!!item.qty && !item.carton && !item.packing} onChange={e => {
-                    const val = e.target.value;
-                    if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                      const newItems = [...items];
-                      newItems[idx].packing = val;
-                      setItems(newItems);
-                    }
-                  }} />
+                  <CustomTextField size="small" value={item.packing} disabled />
                 </TableCell>
                 <TableCell>
-                  <TextField
+                  <CustomTextField
                     size="small"
                     value={item.qty}
-                    disabled={!!item.carton || !!item.packing}
+                    disabled={!!item.carton}
                     onChange={e => {
                       const val = e.target.value;
                       if (val === '' || /^\d*\.?\d*$/.test(val)) {
                         const newItems = [...items];
                         newItems[idx].qty = val;
+                        newItems[idx].total_weight = (Number(val) || 0) * (Number(newItems[idx].weight_per_unit) || 0);
                         setItems(newItems);
                       }
                     }}
                   />
                 </TableCell>
                 <TableCell>
-                  <TextField size="small" value={item.carton_weight} disabled={!item.carton} onChange={e => {
-                    const val = e.target.value;
-                    if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                      const newItems = [...items];
-                      newItems[idx].carton_weight = val;
-                      setItems(newItems);
-                    }
-                  }} />
+                  <CustomTextField size="small" value={item.total_weight || ((Number(item.qty) || 0) * (Number(item.weight_per_unit) || 0)).toFixed(2)} disabled />
                 </TableCell>
                 <TableCell>
-                  <TextField
+                  <CustomTextField
                     size="small"
                     value={item.rate}
                     onChange={e => {
@@ -413,7 +422,7 @@ export default function PurchaseForm() {
                   return grossAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 })()}</TableCell>
                 <TableCell>
-                  <TextField size="small" placeholder="%" value={item.discount} onChange={e => {
+                  <CustomTextField size="small" placeholder="%" value={item.discount} onChange={e => {
                     const val = e.target.value;
                     if (val === '' || /^\d*\.?\d{0,2}$/.test(val)) {
                       const newItems = [...items];
@@ -444,14 +453,14 @@ export default function PurchaseForm() {
                   return netAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 })()}</TableCell>
                 <TableCell>
-                  <IconButton color="error" onClick={() => removeItem(idx)}><Trash2 size={18} /></IconButton>
+                  <IconButton color="error" onClick={() => removeItem(idx)}><IconTrash size={18} /></IconButton>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
         <Button sx={{ mt: 2 }} onClick={addItem}>+ Add Row</Button>
-      </Paper>
+      </Box></BlankCard>
 
       <Dialog
         open={isScannerOpen}
@@ -473,16 +482,16 @@ export default function PurchaseForm() {
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Item Code" size="small" value={newItemData.item_code} onChange={e => setNewItemData({ ...newItemData, item_code: e.target.value })} disabled={isCreatingItem} />
+              <CustomTextField fullWidth label="Item Code" size="small" value={newItemData.item_code} onChange={e => setNewItemData({ ...newItemData, item_code: e.target.value })} disabled={isCreatingItem} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Item Name" size="small" value={newItemData.item_name} onChange={e => setNewItemData({ ...newItemData, item_name: e.target.value })} disabled={isCreatingItem} />
+              <CustomTextField fullWidth label="Item Name" size="small" value={newItemData.item_name} onChange={e => setNewItemData({ ...newItemData, item_name: e.target.value })} disabled={isCreatingItem} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Per Piece Weight" size="small" type="number" value={newItemData.weight_per_unit} onChange={e => setNewItemData({ ...newItemData, weight_per_unit: e.target.value })} disabled={isCreatingItem} />
+              <CustomTextField fullWidth label="Per Piece Weight" size="small" type="number" value={newItemData.weight_per_unit} onChange={e => setNewItemData({ ...newItemData, weight_per_unit: e.target.value })} disabled={isCreatingItem} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Nos per Carton" size="small" type="number" value={newItemData.nos_per_carton} onChange={e => setNewItemData({ ...newItemData, nos_per_carton: e.target.value })} disabled={isCreatingItem} />
+              <CustomTextField fullWidth label="Nos per Carton" size="small" type="number" value={newItemData.nos_per_carton} onChange={e => setNewItemData({ ...newItemData, nos_per_carton: e.target.value })} disabled={isCreatingItem} />
             </Grid>
           </Grid>
         </DialogContent>

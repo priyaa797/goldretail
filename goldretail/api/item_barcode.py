@@ -96,17 +96,26 @@ def get_item_by_barcode(barcode_val):
                 gst_percent = t.tax_rate
                 break
                 
+    # Fetch packing from UOM Conversion Detail for Carton
+    packing = ''
+    for uom in item.get('uoms', []):
+        if uom.uom == 'Carton':
+            packing = uom.conversion_factor
+            break
+            
     return {
         "item_code": item.item_code,
         "item_name": item.item_name,
         "uom": item.stock_uom,
         "rate": 0,
-        "gst_percentage": gst_percent
+        "gst_percentage": gst_percent,
+        "weight_per_unit": item.weight_per_unit,
+        "packing_from_item": packing
     }
 
 @frappe.whitelist()
 def get_all_items():
-    items = frappe.get_all('Item', fields=['name', 'item_code', 'item_name', 'description', 'standard_rate'])
+    items = frappe.get_all('Item', fields=['name', 'item_code', 'item_name', 'description', 'standard_rate', 'weight_per_unit'])
     
     # Pre-fetch item taxes to optimize
     item_taxes = frappe.get_all('Item Tax', fields=['parent', 'item_tax_template'])
@@ -120,8 +129,40 @@ def get_all_items():
         if 'IGST' in t.tax_type and 'Refund' not in t.tax_type and 'RCM' not in t.tax_type:
             template_rates[t.parent] = t.tax_rate
             
+    # Fetch packing from UOM Conversion Detail
+    uom_conversions = frappe.get_all('UOM Conversion Detail', filters={'parenttype': 'Item', 'uom': 'Carton'}, fields=['parent', 'conversion_factor'])
+    packing_map = {u.parent: u.conversion_factor for u in uom_conversions}
+            
     for item in items:
         template = tax_map.get(item.name)
         item['gst_percentage'] = template_rates.get(template, 0.0) if template else 0.0
+        item['packing_from_item'] = packing_map.get(item.name, '')
         
     return items
+
+@frappe.whitelist()
+def update_item_packings(item_packings):
+    import json
+    if isinstance(item_packings, str):
+        item_packings = json.loads(item_packings)
+        
+    for data in item_packings:
+        item = frappe.get_doc("Item", data.get("item_code"))
+        
+        # update or add carton uom
+        found = False
+        for uom in item.uoms:
+            if uom.uom == "Carton":
+                uom.conversion_factor = float(data.get("packing"))
+                found = True
+                break
+                
+        if not found:
+            item.append("uoms", {
+                "uom": "Carton",
+                "conversion_factor": float(data.get("packing"))
+            })
+            
+        item.save(ignore_permissions=True)
+    
+    return True

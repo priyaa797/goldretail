@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
-import { Box, Typography, Paper, Grid, ToggleButtonGroup, ToggleButton, Button, TextField, Divider } from '@mui/material';
+import { Box, Typography, Grid, ToggleButtonGroup, ToggleButton, Button, Divider } from '@mui/material';
+import BlankCard from '../../components/shared/BlankCard';
+
+import CustomTextField from '../../components/forms/theme-elements/CustomTextField';
+
 import { useDispatch, useSelector } from 'react-redux';
 import { setDarkMode, setTheme, setDir } from 'src/store/customizer/CustomizerSlice';
-import { Sun, Moon, Check, AlertOctagon, Palette } from 'lucide-react';
+import { IconSun, IconMoon, IconCheck, IconAlertCircle, IconPalette } from '@tabler/icons-react';
 import { useFrappeGetCall, useFrappePostCall } from 'frappe-react-sdk';
 import toast from 'react-hot-toast';
 
@@ -56,9 +60,9 @@ export default function Settings() {
       <Grid container spacing={3}>
         {/* Theme Settings */}
         <Grid item xs={12}>
-          <Paper sx={{ p: 3, mb: 3 }}>
+          <BlankCard><Box  sx={{ p: 3, mb: 3 }}>
             <Box display="flex" alignItems="center" gap={1} mb={2}>
-              <Palette size={24} color={customizer.activeMode === 'dark' ? '#fff' : '#000'} />
+              <IconPalette size={24} color={customizer.activeMode === 'dark' ? '#fff' : '#000'} />
               <Typography variant="h6">Theme Color</Typography>
             </Box>
             <Typography variant="body2" color="text.secondary" mb={3}>
@@ -84,18 +88,18 @@ export default function Settings() {
                     '&:hover': { transform: 'scale(1.1)' }
                   }}
                 >
-                  {colorVariant === thcolor.disp && <Check color="white" size={20} />}
+                  {colorVariant === thcolor.disp && <IconCheck color="white" size={20} />}
                 </Box>
               ))}
             </Box>
-          </Paper>
+          </Box></BlankCard>
         </Grid>
 
         {(systemStatus?.message?.is_system_manager || systemStatus?.is_system_manager) && (
           <Grid item xs={12}>
-            <Paper sx={{ p: 3, mb: 3, border: '1px solid', borderColor: 'error.main' }}>
+            <BlankCard><Box  sx={{ p: 3, mb: 3, border: '1px solid', borderColor: 'error.main' }}>
               <Box display="flex" alignItems="center" gap={1} mb={2} color="error.main">
-                <AlertOctagon size={24} />
+                <IconAlertCircle size={24} />
                 <Typography variant="h6">System Administration (Danger Zone)</Typography>
               </Box>
 
@@ -106,7 +110,7 @@ export default function Settings() {
 
               <Grid container spacing={2} alignItems="center">
                 <Grid item xs={12} md={8}>
-                  <TextField
+                  <CustomTextField
                     fullWidth
                     label="System Down Image URL"
                     value={killImageUrl}
@@ -121,13 +125,13 @@ export default function Settings() {
                     fullWidth
                     onClick={handleKillSwitch}
                     disabled={isKilling}
-                    startIcon={<AlertOctagon size={18} />}
+                    startIcon={<IconAlertCircle size={18} />}
                   >
                     {isKilling ? 'Triggering...' : 'TRIGGER KILL SWITCH'}
                   </Button>
                 </Grid>
               </Grid>
-            </Paper>
+            </Box></BlankCard>
           </Grid>
         )}
       </Grid>
