@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Button, Typography, Grid, MenuItem, IconButton, Table, TableBody, TableCell, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, createFilterOptions } from '@mui/material';
+import { Box, Button, Typography, Grid, MenuItem, IconButton, Table, TableContainer, TableBody, TableCell, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, createFilterOptions } from '@mui/material';
 import BlankCard from '../../components/shared/BlankCard';
 
 import CustomTextField from '../../components/forms/theme-elements/CustomTextField';
@@ -198,7 +198,7 @@ export default function SalesForm() {
         <Button variant="contained" startIcon={<IconDeviceFloppy size={18} />} onClick={handleSave}>Save & Submit</Button>
       </Box>
 
-      <BlankCard><Box  sx={{ p: 3, mb: 3 }}>
+      <BlankCard><Box sx={{ p: 3, mb: 3 }}>
         <Grid container spacing={3}>
           <Grid item xs={12} md={6}>
             <CustomTextField
@@ -242,7 +242,7 @@ export default function SalesForm() {
         </Grid>
       </Box></BlankCard>
 
-      <BlankCard><Box  sx={{ p: 3, maxWidth: '100%', overflowX: 'hidden' }}>
+      <BlankCard><Box sx={{ p: 3, maxWidth: '100%', overflowX: 'hidden' }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
           <Typography variant="h6">Items</Typography>
           <Box display="flex" gap={2}>
@@ -260,26 +260,23 @@ export default function SalesForm() {
           </Box>
         </Box>
         <Box sx={{ overflowX: 'auto', width: '100%' }}>
-          <Table sx={{ minWidth: 2200 }}>
+          <Table sx={{ minWidth: 1600 }}>
             <TableHead>
               <TableRow>
-                <TableCell sx={{ width: 60, minWidth: 60, position: 'sticky', left: 0, bgcolor: 'background.paper', zIndex: 2 }}>S.No.</TableCell>
-                <TableCell sx={{ width: 250, minWidth: 250, position: 'sticky', left: 60, bgcolor: 'background.paper', zIndex: 2, borderRight: '1px solid', borderColor: 'divider' }}>Item Code</TableCell>
-                <TableCell sx={{ minWidth: 150 }}>Item Name</TableCell>
-                <TableCell sx={{ minWidth: 200 }}>Description</TableCell>
+                <TableCell sx={{ width: 60, minWidth: 60, position: 'sticky', left: 0, bgcolor: 'background.paper', zIndex: 2 }}>#</TableCell>
+                <TableCell sx={{ width: 185, minWidth: 185, position: 'sticky', left: 60, bgcolor: 'background.paper', zIndex: 2, borderRight: '1px solid', borderColor: 'divider' }}>Item Code</TableCell>
+                <TableCell sx={{ minWidth: 80 }}>Item Name</TableCell>
+                <TableCell sx={{ width: 200, minWidth: 200 }}>Description</TableCell>
                 <TableCell sx={{ width: 100 }}>Carton</TableCell>
                 <TableCell sx={{ width: 100 }}>Packing</TableCell>
                 <TableCell sx={{ width: 120 }}>Quantity</TableCell>
                 <TableCell sx={{ width: 120 }}>Total Wt.</TableCell>
                 <TableCell sx={{ width: 120 }}>Rate (System)</TableCell>
                 <TableCell sx={{ width: 120 }}>Rate (User)</TableCell>
-                <TableCell sx={{ width: 120 }}>Gross Amt</TableCell>
                 <TableCell sx={{ width: 100 }}>Discount (%)</TableCell>
                 <TableCell sx={{ width: 120 }}>Discount Amt</TableCell>
-                <TableCell sx={{ width: 100 }}>GST %</TableCell>
-                <TableCell sx={{ width: 120 }}>GST Amt</TableCell>
-                <TableCell sx={{ width: 120 }}>Net Amt</TableCell>
-                <TableCell sx={{ width: 60 }}></TableCell>
+                <TableCell sx={{ width: 120 }}>Gross Amt</TableCell>
+                <TableCell sx={{ width: 40, p: 0 }}></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -359,7 +356,7 @@ export default function SalesForm() {
                       <Typography variant="body2">{item.item_name || '-'}</Typography>
                     </TableCell>
                     <TableCell>
-                      <CustomTextField size="small" multiline maxRows={2} placeholder="Description" value={item.description || ''} onChange={e => {
+                      <CustomTextField size="small" multiline maxRows={4} placeholder="Description" value={item.description || ''} onChange={e => {
                         const newItems = [...items];
                         newItems[idx].description = e.target.value;
                         setItems(newItems);
@@ -384,7 +381,7 @@ export default function SalesForm() {
                       }} />
                     </TableCell>
                     <TableCell>
-                      <CustomTextField size="small" value={item.packing} disabled />
+                      <Typography variant="body2">{item.packing || '-'}</Typography>
                     </TableCell>
                     <TableCell>
                       <CustomTextField size="small" value={item.qty} disabled={!!item.carton} onChange={e => {
@@ -398,10 +395,10 @@ export default function SalesForm() {
                       }} />
                     </TableCell>
                     <TableCell>
-                      <CustomTextField size="small" value={item.total_weight || ((Number(item.qty) || 0) * (Number(item.weight_per_unit) || 0)).toFixed(2)} disabled />
+                      <Typography variant="body2">{item.total_weight || ((Number(item.qty) || 0) * (Number(item.weight_per_unit) || 0)).toFixed(2)}</Typography>
                     </TableCell>
                     <TableCell>
-                      <CustomTextField size="small" value={item.rate} InputProps={{ readOnly: true }} sx={{ bgcolor: 'action.hover' }} />
+                      <Typography variant="body2">₹{(Number(item.rate) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
                     </TableCell>
                     <TableCell>
                       <CustomTextField size="small" placeholder="Rate..." value={item.user_rate} onChange={e => {
@@ -413,7 +410,6 @@ export default function SalesForm() {
                         }
                       }} />
                     </TableCell>
-                    <TableCell>₹{grossAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                     <TableCell>
                       <CustomTextField size="small" placeholder="%" value={item.discount} onChange={e => {
                         const val = e.target.value;
@@ -425,10 +421,8 @@ export default function SalesForm() {
                       }} />
                     </TableCell>
                     <TableCell>₹{discountAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                    <TableCell>{item.gst_percentage || 0}%</TableCell>
-                    <TableCell>₹{gstAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                    <TableCell>₹{finalNetAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                    <TableCell>
+                    <TableCell>₹{grossAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                    <TableCell sx={{ p: 0, textAlign: 'center' }}>
                       <IconButton color="error" onClick={() => removeItem(idx)}><IconTrash size={18} /></IconButton>
                     </TableCell>
                   </TableRow>
@@ -439,6 +433,116 @@ export default function SalesForm() {
         </Box>
         <Button sx={{ mt: 2 }} onClick={addItem}>+ Add Row</Button>
       </Box></BlankCard>
+
+      {(() => {
+        const gstBreakup = {};
+        let total = 0;
+        let total_taxes = 0;
+        let total_discount = 0;
+        let grand_total = 0;
+
+        items?.forEach(item => {
+          const qty = Number(item.qty) || 0;
+          const rate = Number(item.user_rate) || Number(item.rate) || 0;
+          const grossAmount = qty * rate;
+          const discountPercentage = Number(item.discount) || 0;
+          const discountAmt = grossAmount > 0 ? grossAmount * (discountPercentage / 100) : 0;
+          const taxableAmount = grossAmount - discountAmt;
+
+          total += grossAmount;
+          total_discount += discountAmt;
+
+          const gst_percentage = Number(item.gst_percentage) || 0;
+          if (gst_percentage > 0) {
+            const cgstRate = gst_percentage / 2;
+            const sgstRate = gst_percentage / 2;
+            const cgstAmt = taxableAmount * (cgstRate / 100);
+            const sgstAmt = taxableAmount * (sgstRate / 100);
+            const totalTax = cgstAmt + sgstAmt;
+            total_taxes += totalTax;
+
+            if (!gstBreakup[gst_percentage]) {
+              gstBreakup[gst_percentage] = { taxable: 0, cgst: 0, sgst: 0, total_tax: 0 };
+            }
+            gstBreakup[gst_percentage].taxable += taxableAmount;
+            gstBreakup[gst_percentage].cgst += cgstAmt;
+            gstBreakup[gst_percentage].sgst += sgstAmt;
+            gstBreakup[gst_percentage].total_tax += totalTax;
+          }
+        });
+
+        grand_total = total - total_discount + total_taxes;
+        const rounded_total = Math.round(grand_total);
+        const rounding_adjustment = rounded_total - grand_total;
+
+        return (
+          <>
+            {Object.keys(gstBreakup).length > 0 && (
+              <BlankCard><Box sx={{ mb: 4, overflow: 'hidden' }}>
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead sx={{ bgcolor: 'background.default' }}>
+                      <TableRow>
+                        <TableCell sx={{ fontWeight: 600 }}>GST Rate</TableCell>
+                        <TableCell sx={{ fontWeight: 600, textAlign: 'right' }}>Taxable Amount</TableCell>
+                        <TableCell sx={{ fontWeight: 600, textAlign: 'right' }}>CGST Amount</TableCell>
+                        <TableCell sx={{ fontWeight: 600, textAlign: 'right' }}>SGST Amount</TableCell>
+                        <TableCell sx={{ fontWeight: 600, textAlign: 'right' }}>Total Tax</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {Object.entries(gstBreakup).map(([rate, data]) => (
+                        <TableRow key={rate}>
+                          <TableCell>{rate}%</TableCell>
+                          <TableCell sx={{ textAlign: 'right' }}>₹{data.taxable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell sx={{ textAlign: 'right' }}>₹{data.cgst.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell sx={{ textAlign: 'right' }}>₹{data.sgst.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell sx={{ textAlign: 'right' }}>₹{data.total_tax.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box></BlankCard>
+            )}
+
+            <Box display="flex" justifyContent="flex-end" mb={4}>
+              <BlankCard><Box sx={{ p: 3, width: { xs: '100%', md: '300px' } }}>
+                <Box display="flex" justifyContent="space-between" mb={1}>
+                  <Typography variant="body2" color="text.secondary">Total</Typography>
+                  <Typography variant="body2">₹{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
+                </Box>
+                {total_discount > 0 && (
+                  <Box display="flex" justifyContent="space-between" mb={1}>
+                    <Typography variant="body2" color="text.secondary">Total Discount</Typography>
+                    <Typography variant="body2" color="error.main">-₹{total_discount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
+                  </Box>
+                )}
+                <Box display="flex" justifyContent="space-between" mb={1}>
+                  <Typography variant="body2" color="text.secondary">Taxes</Typography>
+                  <Typography variant="body2">₹{total_taxes.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
+                </Box>
+                <Box display="flex" justifyContent="space-between" mb={1} pt={1} sx={{ borderTop: '1px solid', borderColor: 'divider' }}>
+                  <Typography variant="subtitle1" fontWeight="bold">Grand Total</Typography>
+                  <Typography variant="subtitle1" fontWeight="bold">₹{grand_total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
+                </Box>
+                {rounding_adjustment !== 0 && (
+                  <Box display="flex" justifyContent="space-between" mb={1}>
+                    <Typography variant="body2" color="text.secondary">Rounding Adjustment</Typography>
+                    <Typography variant="body2">₹{rounding_adjustment.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
+                  </Box>
+                )}
+                {rounded_total > 0 && rounded_total !== grand_total && (
+                  <Box display="flex" justifyContent="space-between" mb={1} pt={1} sx={{ borderTop: '1px solid', borderColor: 'divider' }}>
+                    <Typography variant="subtitle1" fontWeight="bold">Rounded Total</Typography>
+                    <Typography variant="subtitle1" fontWeight="bold">₹{rounded_total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
+                  </Box>
+                )}
+              </Box></BlankCard>
+            </Box>
+          </>
+        );
+      })()}
 
       <Dialog
         open={isScannerOpen}

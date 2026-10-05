@@ -266,15 +266,15 @@ export default function PurchaseForm() {
             <TableRow>
               <TableCell sx={{ width: 50 }}>S.No.</TableCell>
               <TableCell sx={{ minWidth: 200 }}>Item Code</TableCell>
-              <TableCell sx={{ minWidth: 150 }}>Item Name</TableCell>
-              <TableCell sx={{ minWidth: 200 }}>Description</TableCell>
+              <TableCell sx={{ minWidth: 100 }}>Item Name</TableCell>
+              <TableCell sx={{ width: 250, minWidth: 250 }}>Description</TableCell>
               <TableCell sx={{ width: 100 }}>Carton</TableCell>
               <TableCell sx={{ width: 100 }}>Packing</TableCell>
               <TableCell sx={{ width: 120 }}>Quantity</TableCell>
               <TableCell sx={{ width: 120 }}>Total Wt.</TableCell>
               <TableCell sx={{ width: 120 }}>Rate</TableCell>
               <TableCell sx={{ width: 120 }}>Net Amt</TableCell>
-              <TableCell sx={{ width: 60 }}></TableCell>
+              <TableCell sx={{ width: 40, p: 0 }}></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -352,7 +352,7 @@ export default function PurchaseForm() {
                   <Typography variant="body2">{item.item_name || '-'}</Typography>
                 </TableCell>
                 <TableCell>
-                  <CustomTextField size="small" multiline maxRows={2} placeholder="Description" value={item.description || ''} onChange={e => {
+                  <CustomTextField size="small" multiline maxRows={4} placeholder="Description" value={item.description || ''} onChange={e => {
                     const newItems = [...items];
                     newItems[idx].description = e.target.value;
                     setItems(newItems);
@@ -377,7 +377,7 @@ export default function PurchaseForm() {
                   }} />
                 </TableCell>
                 <TableCell>
-                  <CustomTextField size="small" value={item.packing} disabled />
+                  <Typography variant="body2">{item.packing || '-'}</Typography>
                 </TableCell>
                 <TableCell>
                   <CustomTextField
@@ -396,7 +396,7 @@ export default function PurchaseForm() {
                   />
                 </TableCell>
                 <TableCell>
-                  <CustomTextField size="small" value={item.total_weight || ((Number(item.qty) || 0) * (Number(item.weight_per_unit) || 0)).toFixed(2)} disabled />
+                  <Typography variant="body2">{item.total_weight || ((Number(item.qty) || 0) * (Number(item.weight_per_unit) || 0)).toFixed(2)}</Typography>
                 </TableCell>
                 <TableCell>
                   <CustomTextField
@@ -416,7 +416,7 @@ export default function PurchaseForm() {
                   const netAmount = (Number(item.qty) || 0) * (Number(item.rate) || 0);
                   return netAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 })()}</TableCell>
-                <TableCell>
+                <TableCell sx={{ p: 0, textAlign: 'center' }}>
                   <IconButton color="error" onClick={() => removeItem(idx)}><IconTrash size={18} /></IconButton>
                 </TableCell>
               </TableRow>
