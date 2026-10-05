@@ -273,11 +273,6 @@ export default function PurchaseForm() {
               <TableCell sx={{ width: 120 }}>Quantity</TableCell>
               <TableCell sx={{ width: 120 }}>Total Wt.</TableCell>
               <TableCell sx={{ width: 120 }}>Rate</TableCell>
-              <TableCell sx={{ width: 120 }}>Gross Amt</TableCell>
-              <TableCell sx={{ width: 100 }}>Discount (%)</TableCell>
-              <TableCell sx={{ width: 120 }}>Discount Amt</TableCell>
-              <TableCell sx={{ width: 100 }}>GST %</TableCell>
-              <TableCell sx={{ width: 120 }}>GST Amt</TableCell>
               <TableCell sx={{ width: 120 }}>Net Amt</TableCell>
               <TableCell sx={{ width: 60 }}></TableCell>
             </TableRow>
@@ -418,38 +413,7 @@ export default function PurchaseForm() {
                   />
                 </TableCell>
                 <TableCell>₹{(() => {
-                  const grossAmount = (Number(item.qty) || 0) * (Number(item.rate) || 0);
-                  return grossAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                })()}</TableCell>
-                <TableCell>
-                  <CustomTextField size="small" placeholder="%" value={item.discount} onChange={e => {
-                    const val = e.target.value;
-                    if (val === '' || /^\d*\.?\d{0,2}$/.test(val)) {
-                      const newItems = [...items];
-                      newItems[idx].discount = val;
-                      setItems(newItems);
-                    }
-                  }} />
-                </TableCell>
-                <TableCell>₹{(() => {
-                  const grossAmount = (Number(item.qty) || 0) * (Number(item.rate) || 0);
-                  const discountAmt = grossAmount * ((Number(item.discount) || 0) / 100);
-                  return discountAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                })()}</TableCell>
-                <TableCell>{item.gst_percentage || 0}%</TableCell>
-                <TableCell>₹{(() => {
-                  const grossAmount = (Number(item.qty) || 0) * (Number(item.rate) || 0);
-                  const discountAmt = grossAmount * ((Number(item.discount) || 0) / 100);
-                  const taxableAmount = grossAmount - discountAmt;
-                  const gstAmt = taxableAmount * ((Number(item.gst_percentage) || 0) / 100);
-                  return gstAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                })()}</TableCell>
-                <TableCell>₹{(() => {
-                  const grossAmount = (Number(item.qty) || 0) * (Number(item.rate) || 0);
-                  const discountAmt = grossAmount * ((Number(item.discount) || 0) / 100);
-                  const taxableAmount = grossAmount - discountAmt;
-                  const gstAmt = taxableAmount * ((Number(item.gst_percentage) || 0) / 100);
-                  const netAmount = taxableAmount + gstAmt;
+                  const netAmount = (Number(item.qty) || 0) * (Number(item.rate) || 0);
                   return netAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 })()}</TableCell>
                 <TableCell>
