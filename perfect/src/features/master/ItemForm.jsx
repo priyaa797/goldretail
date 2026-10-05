@@ -5,7 +5,7 @@ import BlankCard from '../../components/shared/BlankCard';
 import CustomTextField from '../../components/forms/theme-elements/CustomTextField';
 
 import { useFrappeGetDocList, useFrappePostCall, useFrappeGetDoc, useFrappeUpdateDoc } from 'frappe-react-sdk';
-import { IconDeviceFloppy, IconPhoto as ImageIcon, IconX, IconArrowLeft } from '@tabler/icons-react';
+import { IconDeviceFloppy, IconPhoto, IconX, IconArrowLeft } from '@tabler/icons-react';
 import toast from 'react-hot-toast';
 import { useParams, useNavigate } from 'react-router';
 
