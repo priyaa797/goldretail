@@ -13,8 +13,8 @@ export default function Catalog() {
   const [itemsLoaded, setItemsLoaded] = useState(false);
 
   // Filters state
-  const [category, setCategory] = useState(null);
-  const [subCategory, setSubCategory] = useState(null);
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [selectedSubCategories, setSelectedSubCategories] = useState([]);
   const [showZeroStock, setShowZeroStock] = useState(false);
   const [priceList, setPriceList] = useState('Wholesale');
   const [discount, setDiscount] = useState('');
@@ -24,8 +24,8 @@ export default function Catalog() {
   const { data: bins } = useFrappeGetDocList('Bin', { fields: ['item_code', 'actual_qty'], limit: 100000 });
 
   const queryFilters = [['disabled', '=', 0]];
-  if (category) queryFilters.push(['category', '=', category]);
-  if (subCategory) queryFilters.push(['sub_category', '=', subCategory]);
+  if (selectedCategories.length > 0) queryFilters.push(['category', 'in', selectedCategories]);
+  if (selectedSubCategories.length > 0) queryFilters.push(['sub_category', 'in', selectedSubCategories]);
 
   // Fetch only active items based on category and sub_category filters
   const { data: items, isLoading } = useFrappeGetDocList('Item', {
@@ -133,17 +133,19 @@ export default function Catalog() {
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} sm={3}>
             <Autocomplete
+              multiple
               options={categories?.map(c => c.name) || []}
-              value={category}
-              onChange={(e, val) => { setCategory(val); setItemsLoaded(false); }}
+              value={selectedCategories}
+              onChange={(e, val) => { setSelectedCategories(val); setItemsLoaded(false); }}
               renderInput={(params) => <CustomTextField {...params} label="Category" size="small" />}
             />
           </Grid>
           <Grid item xs={12} sm={3}>
             <Autocomplete
+              multiple
               options={subCategories?.map(s => s.name) || []}
-              value={subCategory}
-              onChange={(e, val) => { setSubCategory(val); setItemsLoaded(false); }}
+              value={selectedSubCategories}
+              onChange={(e, val) => { setSelectedSubCategories(val); setItemsLoaded(false); }}
               renderInput={(params) => <CustomTextField {...params} label="Sub Category" size="small" />}
             />
           </Grid>
