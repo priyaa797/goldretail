@@ -2,6 +2,7 @@ import frappe
 import pandas as pd
 import re
 import os
+from openpyxl import load_workbook
 
 def get_mapped_fields():
     """Find the exact mapping fields for category and sub_category in the Item doctype."""
@@ -39,6 +40,37 @@ def get_file_path(file_name):
     file_doc_name = frappe.db.get_value("File", {"file_name": file_name}, "name")
     if file_doc_name:
         return frappe.get_doc("File", file_doc_name).get_full_path()
+    return None
+
+def get_images_from_excel(file_path):
+    """Safely extract images from excel into a dict keyed by 1-indexed row number."""
+    image_map = {}
+    try:
+        wb = load_workbook(file_path, data_only=True)
+        ws = wb.active
+        if hasattr(ws, '_images'):
+            for img in ws._images:
+                try:
+                    row_idx = None
+                    if hasattr(img, 'anchor') and hasattr(img.anchor, '_from'):
+                        row_idx = img.anchor._from.row + 1
+                    elif hasattr(img, 'anchor') and hasattr(img.anchor, 'row'):
+                        row_idx = img.anchor.row + 1
+                        
+                    if row_idx is not None:
+                        image_map[row_idx] = img
+                except Exception:
+                    pass
+    except Exception as e:
+        print(f"Warning: Could not load images from {file_path} - {e}")
+    return image_map
+
+def get_image_bytes(img):
+    if hasattr(img, '_data'):
+        return img._data() if callable(img._data) else img._data
+    if hasattr(img, 'ref'):
+        img.ref.seek(0)
+        return img.ref.read()
     return None
 
 def setup_dependencies():
@@ -100,6 +132,8 @@ def execute(commit=1):
         print(f"\nReading excel file: {target_file}")
         try:
             df = pd.read_excel(file_path)
+            print("Loading workbook for image extraction (this may take a moment)...")
+            image_map = get_images_from_excel(file_path)
         except Exception as e:
             global_issues.append(f"Error reading file {target_file}: {e}")
             continue
@@ -175,6 +209,9 @@ def execute(commit=1):
                     "conversion_factor": carton_qty
                 })
                 
+            # Get matching image object if it exists
+            img_obj = image_map.get(row_num)
+                
             all_items_to_create.append({
                 "file": target_file,
                 "item": item_doc,
@@ -182,6 +219,7 @@ def execute(commit=1):
                     wholesale_price_list: wholesale_price,
                     retail_price_list: retail_price
                 },
+                "image_obj": img_obj,
                 "row_num": row_num
             })
 
@@ -217,6 +255,31 @@ def execute(commit=1):
                         "item_code": item_code,
                         "price_list_rate": data["prices"][retail_price_list]
                     }).insert(ignore_permissions=True)
+                    
+                # Upload Image if present
+                img_obj = data.get("image_obj")
+                if img_obj:
+                    try:
+                        raw_data = get_image_bytes(img_obj)
+                        if raw_data:
+                            ext = "png"
+                            if hasattr(img_obj, 'format') and img_obj.format:
+                                ext = img_obj.format.lower()
+                                
+                            file_doc = frappe.get_doc({
+                                "doctype": "File",
+                                "file_name": f"{item_code}_image.{ext}",
+                                "attached_to_doctype": "Item",
+                                "attached_to_name": item_code,
+                                "content": raw_data,
+                                "is_private": 0
+                            })
+                            file_doc.insert(ignore_permissions=True)
+                            
+                            # Attach to Item
+                            frappe.db.set_value("Item", item_code, "image", file_doc.file_url)
+                    except Exception as img_err:
+                        print(f"Failed to attach image for {item_code}: {img_err}")
                     
             except Exception as e:
                 frappe.log_error(f"Error importing row {data['row_num']} in {data['file']} - {item_code}")
