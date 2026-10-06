@@ -103,7 +103,7 @@ def generate_pdf(item_codes, price_list="Wholesale", discount=0.0):
     <body>
     """
     
-    ITEMS_PER_PAGE = 12
+    ITEMS_PER_PAGE = 9
     ITEMS_PER_ROW = 3
     
     for page_idx in range(0, len(sorted_items), ITEMS_PER_PAGE):
