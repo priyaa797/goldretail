@@ -324,7 +324,7 @@ export default function SalesDetails() {
         <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px', fontSize: '12px' }}>
           <thead>
             <tr>
-              <td colSpan={6} style={{ border: 'none', padding: 0 }}>
+              <td colSpan={7} style={{ border: 'none', padding: 0 }}>
                 {/* <Box sx={{ textAlign: 'center', mb: 3, borderBottom: '2px solid #000', pb: 2 }}>
                   <Typography variant="h4" sx={{ fontWeight: 'bold', fontFamily: 'serif', color: '#000' }}>Perfect Crockery</Typography>
                   <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, letterSpacing: 1 }}>PERFECT THE HOME CREATION</Typography>
