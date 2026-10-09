@@ -387,7 +387,7 @@ export default function SalesDetails() {
                     ₹{(Number(item.rate) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     {item.discount_percentage ? <div style={{ fontSize: '10px' }}>({item.discount_percentage}%)</div> : null}
                   </td>
-                  <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'right', verticalAlign: 'top' }}>₹{grossAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'right', verticalAlign: 'top' }}>₹{(Number(item.amount) || taxableAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 </tr>
               );
             })}
