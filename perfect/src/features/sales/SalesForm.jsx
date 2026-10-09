@@ -19,6 +19,8 @@ export default function SalesForm() {
   const [customer, setCustomer] = useState('');
   const [priceList, setPriceList] = useState('Wholesale');
   const [items, setItems] = useState([{ item_code: '', item_name: '', description: '', qty: '', rate: 0, user_rate: '', carton: '', packing: '', total_weight: '', discount: '' }]);
+  const [transportationCharges, setTransportationCharges] = useState('');
+  const [packagingCharges, setPackagingCharges] = useState('');
 
   const { data: customers } = useFrappeGetDocList('Customer', { fields: ['name', 'customer_group', 'default_price_list'], limit: 10000 });
   const { data: customerGroups } = useFrappeGetDocList('Customer Group', { fields: ['name', 'default_price_list'], limit: 1000 });
@@ -146,7 +148,9 @@ export default function SalesForm() {
       taxes_and_charges: `Output GST In-state - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`,
       taxes: [
         { charge_type: 'On Net Total', account_head: `Output Tax CGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`, description: `Output Tax CGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}` },
-        { charge_type: 'On Net Total', account_head: `Output Tax SGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`, description: `Output Tax SGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}` }
+        { charge_type: 'On Net Total', account_head: `Output Tax SGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`, description: `Output Tax SGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}` },
+        ...(Number(transportationCharges) > 0 ? [{ charge_type: 'Actual', account_head: `Transportation Charges - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`, description: 'Transportation Charges', tax_amount: Number(transportationCharges) }] : []),
+        ...(Number(packagingCharges) > 0 ? [{ charge_type: 'Actual', account_head: `Packaging Charges - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`, description: 'Packaging Charges', tax_amount: Number(packagingCharges) }] : [])
       ],
       update_stock: 1, // Crucial for our simplified workflow
       docstatus: 1 // Try to submit immediately
@@ -471,7 +475,9 @@ export default function SalesForm() {
           }
         });
 
-        grand_total = total - total_discount + total_taxes;
+        const transportChargeVal = Number(transportationCharges) || 0;
+        const packingChargeVal = Number(packagingCharges) || 0;
+        grand_total = total - total_discount + total_taxes + transportChargeVal + packingChargeVal;
         const rounded_total = Math.round(grand_total);
         const rounding_adjustment = rounded_total - grand_total;
 
@@ -506,8 +512,38 @@ export default function SalesForm() {
               </Box></BlankCard>
             )}
 
-            <Box display="flex" justifyContent="flex-end" mb={4}>
-              <BlankCard><Box sx={{ p: 3, width: { xs: '100%', md: '300px' } }}>
+            <Box mb={4}>
+              <BlankCard>
+                <Box display="flex" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap={3} sx={{ p: 3 }}>
+                  <Box sx={{ width: { xs: '100%', md: '300px' } }}>
+                    <Typography variant="subtitle1" fontWeight="bold" mb={2}>Additional Charges</Typography>
+                    <Box display="flex" flexDirection="column" gap={2}>
+                      <CustomTextField
+                        fullWidth
+                        label="Transportation Charges"
+                        value={transportationCharges}
+                        onChange={e => {
+                          const val = e.target.value;
+                          if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                            setTransportationCharges(val);
+                          }
+                        }}
+                      />
+                      <CustomTextField
+                        fullWidth
+                        label="Packaging Charges"
+                        value={packagingCharges}
+                        onChange={e => {
+                          const val = e.target.value;
+                          if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                            setPackagingCharges(val);
+                          }
+                        }}
+                      />
+                    </Box>
+                  </Box>
+
+                  <Box sx={{ width: { xs: '100%', md: '300px' } }}>
                 <Box display="flex" justifyContent="space-between" mb={1}>
                   <Typography variant="body2" color="text.secondary">Total</Typography>
                   <Typography variant="body2">₹{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
@@ -522,6 +558,18 @@ export default function SalesForm() {
                   <Typography variant="body2" color="text.secondary">Taxes</Typography>
                   <Typography variant="body2">₹{total_taxes.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
                 </Box>
+                {transportChargeVal > 0 && (
+                  <Box display="flex" justifyContent="space-between" mb={1}>
+                    <Typography variant="body2" color="text.secondary">Transportation Charges</Typography>
+                    <Typography variant="body2">₹{transportChargeVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
+                  </Box>
+                )}
+                {packingChargeVal > 0 && (
+                  <Box display="flex" justifyContent="space-between" mb={1}>
+                    <Typography variant="body2" color="text.secondary">Packaging Charges</Typography>
+                    <Typography variant="body2">₹{packingChargeVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
+                  </Box>
+                )}
                 <Box display="flex" justifyContent="space-between" mb={1} pt={1} sx={{ borderTop: '1px solid', borderColor: 'divider' }}>
                   <Typography variant="subtitle1" fontWeight="bold">Grand Total</Typography>
                   <Typography variant="subtitle1" fontWeight="bold">₹{grand_total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
@@ -538,7 +586,9 @@ export default function SalesForm() {
                     <Typography variant="subtitle1" fontWeight="bold">₹{rounded_total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
                   </Box>
                 )}
-              </Box></BlankCard>
+                  </Box>
+                </Box>
+              </BlankCard>
             </Box>
           </>
         );
