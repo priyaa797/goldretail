@@ -222,15 +222,20 @@ export default function PurchaseForm() {
       <BlankCard><Box sx={{ p: 3, mb: 3 }}>
         <Grid container spacing={3}>
           <Grid item xs={12} md={6}>
-            <CustomTextField
-              select
-              fullWidth
-              label="Supplier"
-              value={supplier}
-              onChange={e => setSupplier(e.target.value)}
-            >
-              {suppliers?.map(s => <MenuItem key={s.name} value={s.name}>{s.name}</MenuItem>)}
-            </CustomTextField>
+            <Autocomplete
+              options={suppliers || []}
+              getOptionLabel={(option) => option.name || ''}
+              value={suppliers?.find(s => s.name === supplier) || null}
+              onChange={(e, newValue) => setSupplier(newValue ? newValue.name : '')}
+              renderInput={(params) => (
+                <CustomTextField
+                  {...params}
+                  fullWidth
+                  label="Supplier"
+                  placeholder="Select Supplier..."
+                />
+              )}
+            />
           </Grid>
           <Grid item xs={12} md={6}>
             <CustomTextField

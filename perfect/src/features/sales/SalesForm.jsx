@@ -205,15 +205,14 @@ export default function SalesForm() {
       <BlankCard><Box sx={{ p: 3, mb: 3 }}>
         <Grid container spacing={3}>
           <Grid item xs={12} md={6}>
-            <CustomTextField
-              select
-              fullWidth
-              label="Customer"
-              value={customer}
-              onChange={e => {
-                const val = e.target.value;
+            <Autocomplete
+              options={customers || []}
+              getOptionLabel={(option) => option.name || ''}
+              value={customers?.find(c => c.name === customer) || null}
+              onChange={(e, newValue) => {
+                const val = newValue ? newValue.name : '';
                 setCustomer(val);
-                const selectedCust = customers?.find(c => c.name === val);
+                const selectedCust = newValue;
                 if (selectedCust) {
                   let pl = selectedCust.default_price_list;
                   if (!pl && selectedCust.customer_group) {
@@ -227,9 +226,15 @@ export default function SalesForm() {
                   }
                 }
               }}
-            >
-              {customers?.map(s => <MenuItem key={s.name} value={s.name}>{s.name}</MenuItem>)}
-            </CustomTextField>
+              renderInput={(params) => (
+                <CustomTextField 
+                  {...params} 
+                  fullWidth 
+                  label="Customer" 
+                  placeholder="Select Customer..." 
+                />
+              )}
+            />
           </Grid>
           <Grid item xs={12} md={6}>
             <CustomTextField
