@@ -351,10 +351,11 @@ export default function SalesDetails() {
             <tr>
               <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'left' }}>S.No</th>
               <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'left' }}>Item Name</th>
+              <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'right' }}>Ctn</th>
               <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'right' }}>Qty</th>
               <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'right' }}>Rate</th>
               <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'right' }}>Disc</th>
-              <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'right' }}>Net Amt</th>
+              <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'right' }}>Gross Total</th>
             </tr>
           </thead>
           <tbody>
@@ -370,12 +371,23 @@ export default function SalesDetails() {
 
               return (
                 <tr key={index}>
-                  <td style={{ border: '1px solid #000', padding: '6px' }}>{index + 1}</td>
-                  <td style={{ border: '1px solid #000', padding: '6px' }}>{item.item_name}</td>
-                  <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'right' }}>{qty}</td>
-                  <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'right' }}>₹{baseRate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                  <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'right' }}>{item.discount_percentage ? `${item.discount_percentage}%` : '-'}</td>
-                  <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'right' }}>₹{finalNetAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td style={{ border: '1px solid #000', padding: '6px', verticalAlign: 'top' }}>{index + 1}</td>
+                  <td style={{ border: '1px solid #000', padding: '6px', verticalAlign: 'top' }}>
+                    {item.item_name}
+                    {item.description && (
+                      <div style={{ fontSize: '10px', fontStyle: 'italic', marginTop: '2px' }}>
+                        {item.description.replace(/<[^>]*>?/gm, '')}
+                      </div>
+                    )}
+                  </td>
+                  <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'right', verticalAlign: 'top' }}>{item.carton || '-'}</td>
+                  <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'right', verticalAlign: 'top' }}>{qty}</td>
+                  <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'right', verticalAlign: 'top' }}>₹{baseRate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'right', verticalAlign: 'top' }}>
+                    ₹{discountAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {item.discount_percentage ? <div style={{ fontSize: '10px' }}>({item.discount_percentage}%)</div> : null}
+                  </td>
+                  <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'right', verticalAlign: 'top' }}>₹{grossAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 </tr>
               );
             })}
@@ -448,24 +460,62 @@ export default function SalesDetails() {
           );
         })()}
 
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-          <table style={{ width: '250px', borderCollapse: 'collapse', fontSize: '12px' }}>
-            <tbody>
-              <tr>
-                <td style={{ padding: '4px', fontWeight: 'bold' }}>Total Taxable:</td>
-                <td style={{ padding: '4px', textAlign: 'right' }}>₹{doc.total}</td>
-              </tr>
-              <tr>
-                <td style={{ padding: '4px', fontWeight: 'bold' }}>Total Taxes:</td>
-                <td style={{ padding: '4px', textAlign: 'right' }}>₹{doc.total_taxes_and_charges}</td>
-              </tr>
-              <tr>
-                <td style={{ padding: '6px 4px', fontWeight: 'bold', borderTop: '2px solid #000', borderBottom: '2px solid #000' }}>Grand Total:</td>
-                <td style={{ padding: '6px 4px', textAlign: 'right', fontWeight: 'bold', borderTop: '2px solid #000', borderBottom: '2px solid #000' }}>₹{doc.grand_total}</td>
-              </tr>
-            </tbody>
-          </table>
-        </Box>
+        {(() => {
+          const actualCharges = doc.taxes?.filter(t => t.charge_type === 'Actual') || [];
+          const actualChargesTotal = actualCharges.reduce((acc, curr) => acc + (Number(curr.tax_amount) || 0), 0);
+          const totalTaxes = (Number(doc.total_taxes_and_charges) || 0) - actualChargesTotal;
+
+          return (
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+              <table style={{ width: '250px', borderCollapse: 'collapse', fontSize: '12px' }}>
+                <tbody>
+                  <tr>
+                    <td style={{ padding: '4px', fontWeight: 'bold' }}>Total Taxable:</td>
+                    <td style={{ padding: '4px', textAlign: 'right' }}>₹{doc.total}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '4px', fontWeight: 'bold' }}>Total Taxes:</td>
+                    <td style={{ padding: '4px', textAlign: 'right' }}>₹{totalTaxes.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>
+                  {actualCharges.map((charge, i) => {
+                    const label = charge.account_head ? charge.account_head.split(' - ')[0] : charge.description;
+                    return (
+                      <tr key={`print-charge-${i}`}>
+                        <td style={{ padding: '4px', fontWeight: 'bold' }}>{label}:</td>
+                        <td style={{ padding: '4px', textAlign: 'right' }}>₹{charge.tax_amount}</td>
+                      </tr>
+                    );
+                  })}
+                  <tr>
+                    <td style={{ padding: '6px 4px', fontWeight: 'bold', borderTop: '2px solid #000', borderBottom: '2px solid #000' }}>Grand Total:</td>
+                    <td style={{ padding: '6px 4px', textAlign: 'right', fontWeight: 'bold', borderTop: '2px solid #000', borderBottom: '2px solid #000' }}>₹{doc.grand_total}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </Box>
+          );
+        })()}
+
+        {(() => {
+          const totalWeight = doc.items?.reduce((acc, curr) => acc + (Number(curr.total_weight) || Number(curr.carton_weight) || 0), 0) || 0;
+          const totalQty = doc.items?.reduce((acc, curr) => acc + (Number(curr.qty) || 0), 0) || 0;
+          return (
+            <Box sx={{ mt: 3, mb: 2, display: 'flex', justifyContent: 'flex-start' }}>
+              <table style={{ width: '250px', borderCollapse: 'collapse', fontSize: '12px', border: '1px solid #000' }}>
+                <tbody>
+                  <tr>
+                    <td style={{ padding: '6px', fontWeight: 'bold', border: '1px solid #000' }}>Total Weight:</td>
+                    <td style={{ padding: '6px', textAlign: 'right', border: '1px solid #000' }}>{totalWeight.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kgs.</td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '6px', fontWeight: 'bold', border: '1px solid #000' }}>Total Qty:</td>
+                    <td style={{ padding: '6px', textAlign: 'right', border: '1px solid #000' }}>{totalQty}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </Box>
+          );
+        })()}
 
         <Box sx={{ mt: 4, pt: 2, borderTop: '1px solid #000', textAlign: 'center' }}>
           <Typography variant="body2" sx={{ fontStyle: 'italic' }}>Thank you for your business!</Typography>
