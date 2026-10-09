@@ -9,7 +9,7 @@ def get_stock_balance(warehouse=None, item=None, show_zero_balance=0):
     
     filters = []
     if not frappe.utils.cint(show_zero_balance):
-        filters.append(["actual_qty", ">", 0])
+        filters.append(["actual_qty", "!=", 0])
     if warehouse:
         filters.append(["warehouse", "=", warehouse])
     if item:
