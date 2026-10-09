@@ -343,7 +343,7 @@ export default function SalesDetails() {
                   <Box sx={{ textAlign: 'right' }}>
                     <Typography variant="body2"><strong>Invoice No:</strong> {doc.name}</Typography>
                     <Typography variant="body2"><strong>Date:</strong> {dayjs(doc.posting_date).format('DD MMM YYYY')}</Typography>
-                    <Typography variant="body2"><strong>Payment Status:</strong> {doc.status}</Typography>
+                    {/* <Typography variant="body2"><strong>Payment Status:</strong> {doc.status}</Typography> */}
                   </Box>
                 </Box>
               </td>
