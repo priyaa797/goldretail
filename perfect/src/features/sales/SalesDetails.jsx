@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, Grid, CircularProgress, Chip } from '@mui/material';
 import BlankCard from '../../components/shared/BlankCard';
+import CustomTextField from '../../components/forms/theme-elements/CustomTextField';
 
 import { useParams, useNavigate } from 'react-router';
 import { useFrappeGetDoc } from 'frappe-react-sdk';
@@ -223,38 +224,76 @@ export default function SalesDetails() {
       })()}
 
 
-      <Box display="flex" justifyContent="flex-end">
-        <BlankCard><Box  sx={{ p: 3, width: { xs: '100%', md: '300px' } }}>
-          <Box display="flex" justifyContent="space-between" mb={1}>
-            <Typography variant="body2" color="text.secondary">Total</Typography>
-            <Typography variant="body2">₹{doc.total}</Typography>
+      {(() => {
+        const actualCharges = doc.taxes?.filter(t => t.charge_type === 'Actual') || [];
+        const actualChargesTotal = actualCharges.reduce((acc, curr) => acc + (Number(curr.tax_amount) || 0), 0);
+        const totalTaxes = (Number(doc.total_taxes_and_charges) || 0) - actualChargesTotal;
+
+        return (
+          <Box mb={4}>
+            <BlankCard>
+              <Box display="flex" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap={3} sx={{ p: 3 }}>
+                <Box sx={{ width: { xs: '100%', md: '300px' } }}>
+                  <Typography variant="subtitle1" fontWeight="bold" mb={2}>Additional Charges</Typography>
+                  <Box display="flex" flexDirection="column" gap={1}>
+                    {actualCharges.length > 0 ? actualCharges.map((charge, i) => {
+                      const label = charge.account_head ? charge.account_head.split(' - ')[0] : charge.description;
+                      return (
+                        <Box key={i} display="flex" justifyContent="space-between">
+                          <Typography variant="body2" color="text.secondary">{label}:</Typography>
+                          <Typography variant="body2" fontWeight="500">₹{charge.tax_amount}</Typography>
+                        </Box>
+                      );
+                    }) : (
+                      <Typography variant="body2" color="text.secondary">No additional charges.</Typography>
+                    )}
+                  </Box>
+                </Box>
+
+                <Box sx={{ width: { xs: '100%', md: '300px' } }}>
+                  <Box display="flex" justifyContent="space-between" mb={1}>
+                    <Typography variant="body2" color="text.secondary">Total</Typography>
+                    <Typography variant="body2">₹{doc.total}</Typography>
+                  </Box>
+                  <Box display="flex" justifyContent="space-between" mb={1}>
+                    <Typography variant="body2" color="text.secondary">Taxes</Typography>
+                    <Typography variant="body2">₹{totalTaxes.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
+                  </Box>
+                  {actualCharges.map((charge, i) => {
+                    const label = charge.account_head ? charge.account_head.split(' - ')[0] : charge.description;
+                    return (
+                      <Box key={`total-${i}`} display="flex" justifyContent="space-between" mb={1}>
+                        <Typography variant="body2" color="text.secondary">{label}</Typography>
+                        <Typography variant="body2">₹{charge.tax_amount}</Typography>
+                      </Box>
+                    );
+                  })}
+                  <Box display="flex" justifyContent="space-between" mb={1} pt={1} sx={{ borderTop: '1px solid', borderColor: 'divider' }}>
+                    <Typography variant="subtitle1" fontWeight="bold">Grand Total</Typography>
+                    <Typography variant="subtitle1" fontWeight="bold">₹{doc.grand_total}</Typography>
+                  </Box>
+                  {doc.rounding_adjustment !== 0 && (
+                    <Box display="flex" justifyContent="space-between" mb={1}>
+                      <Typography variant="body2" color="text.secondary">Rounding Adjustment</Typography>
+                      <Typography variant="body2">₹{doc.rounding_adjustment}</Typography>
+                    </Box>
+                  )}
+                  {doc.rounded_total > 0 && doc.rounded_total !== doc.grand_total && (
+                    <Box display="flex" justifyContent="space-between" mb={1} pt={1} sx={{ borderTop: '1px solid', borderColor: 'divider' }}>
+                      <Typography variant="subtitle1" fontWeight="bold">Rounded Total</Typography>
+                      <Typography variant="subtitle1" fontWeight="bold">₹{doc.rounded_total}</Typography>
+                    </Box>
+                  )}
+                  <Box display="flex" justifyContent="space-between" mt={1}>
+                    <Typography variant="body2" color="error">Outstanding</Typography>
+                    <Typography variant="body2" color="error" fontWeight="bold">₹{doc.outstanding_amount}</Typography>
+                  </Box>
+                </Box>
+              </Box>
+            </BlankCard>
           </Box>
-          <Box display="flex" justifyContent="space-between" mb={1}>
-            <Typography variant="body2" color="text.secondary">Taxes</Typography>
-            <Typography variant="body2">₹{doc.total_taxes_and_charges}</Typography>
-          </Box>
-          <Box display="flex" justifyContent="space-between" mb={1} pt={1} sx={{ borderTop: '1px solid', borderColor: 'divider' }}>
-            <Typography variant="subtitle1" fontWeight="bold">Grand Total</Typography>
-            <Typography variant="subtitle1" fontWeight="bold">₹{doc.grand_total}</Typography>
-          </Box>
-          {doc.rounding_adjustment !== 0 && (
-            <Box display="flex" justifyContent="space-between" mb={1}>
-              <Typography variant="body2" color="text.secondary">Rounding Adjustment</Typography>
-              <Typography variant="body2">₹{doc.rounding_adjustment}</Typography>
-            </Box>
-          )}
-          {doc.rounded_total > 0 && doc.rounded_total !== doc.grand_total && (
-            <Box display="flex" justifyContent="space-between" mb={1} pt={1} sx={{ borderTop: '1px solid', borderColor: 'divider' }}>
-              <Typography variant="subtitle1" fontWeight="bold">Rounded Total</Typography>
-              <Typography variant="subtitle1" fontWeight="bold">₹{doc.rounded_total}</Typography>
-            </Box>
-          )}
-          <Box display="flex" justifyContent="space-between" mt={1}>
-            <Typography variant="body2" color="error">Outstanding</Typography>
-            <Typography variant="body2" color="error" fontWeight="bold">₹{doc.outstanding_amount}</Typography>
-          </Box>
-        </Box></BlankCard>
-      </Box>
+        );
+      })()}
 
       {/* Meta Information Section */}
       <BlankCard><Box  sx={{ mt: 4, p: 3, bgcolor: 'background.default', border: '1px dashed', borderColor: 'divider', boxShadow: 'none' }}>
