@@ -8,6 +8,8 @@ import {
   IconPoint,
   IconTemplate,
   IconLibrary,
+  IconUsersGroup,
+  IconPackage,
 } from '@tabler/icons-react';
 
 import { uniqueId } from 'lodash';
@@ -26,6 +28,18 @@ const Menuitems = [
   {
     navlabel: true,
     subheader: 'Master',
+  },
+  {
+    id: uniqueId(),
+    title: 'Customer',
+    icon: IconUsersGroup,
+    href: '/master/customer',
+  },
+  {
+    id: uniqueId(),
+    title: 'Supplier',
+    icon: IconTruckDelivery,
+    href: '/master/supplier',
   },
   {
     id: uniqueId(),
@@ -52,7 +66,7 @@ const Menuitems = [
   {
     id: uniqueId(),
     title: 'Purchases',
-    icon: IconTruckDelivery,
+    icon: IconPackage,
     href: '/purchase',
   },
   {

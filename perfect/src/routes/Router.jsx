@@ -28,6 +28,10 @@ const ItemForm = Loadable(lazy(() => import('../features/master/ItemForm')));
 const ItemList = Loadable(lazy(() => import('../features/master/ItemList')));
 const ItemDetails = Loadable(lazy(() => import('../features/master/ItemDetails')));
 const Catalog = Loadable(lazy(() => import('../features/master/Catalog')));
+const CustomerList = Loadable(lazy(() => import('../features/master/CustomerList')));
+const CustomerForm = Loadable(lazy(() => import('../features/master/CustomerForm')));
+const SupplierList = Loadable(lazy(() => import('../features/master/SupplierList')));
+const SupplierForm = Loadable(lazy(() => import('../features/master/SupplierForm')));
 
 const Router = [
   {
@@ -55,6 +59,12 @@ const Router = [
           { path: '/master/item/:id', exact: true, element: <ItemDetails /> },
           { path: '/master/item/:id/edit', exact: true, element: <ItemForm /> },
           { path: '/master/catalog', exact: true, element: <Catalog /> },
+          { path: '/master/customer', exact: true, element: <CustomerList /> },
+          { path: '/master/customer/new', exact: true, element: <CustomerForm /> },
+          { path: '/master/customer/:id', exact: true, element: <CustomerForm /> },
+          { path: '/master/supplier', exact: true, element: <SupplierList /> },
+          { path: '/master/supplier/new', exact: true, element: <SupplierForm /> },
+          { path: '/master/supplier/:id', exact: true, element: <SupplierForm /> },
           { path: '*', element: <Navigate to="/auth/404" /> },
         ],
       },
