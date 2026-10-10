@@ -260,40 +260,40 @@ export default function SalesDetails() {
                   <Box sx={{ width: { xs: '100%', md: '300px' } }}>
                     <Box display="flex" justifyContent="space-between" mb={1}>
                       <Typography variant="body2" color="text.secondary">Total</Typography>
-                      <Typography variant="body2">₹{doc.total}</Typography>
+                      <Typography variant="body2">₹{Number(doc.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
                     </Box>
                     <Box display="flex" justifyContent="space-between" mb={1}>
                       <Typography variant="body2" color="text.secondary">Taxes</Typography>
-                      <Typography variant="body2">₹{totalTaxes.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
+                      <Typography variant="body2">₹{Number(totalTaxes || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
                     </Box>
                     {actualCharges.map((charge, i) => {
                       const label = charge.account_head ? charge.account_head.split(' - ')[0] : charge.description;
                       return (
                         <Box key={`total-${i}`} display="flex" justifyContent="space-between" mb={1}>
                           <Typography variant="body2" color="text.secondary">{label}</Typography>
-                          <Typography variant="body2">₹{charge.tax_amount}</Typography>
+                          <Typography variant="body2">₹{Number(charge.tax_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
                         </Box>
                       );
                     })}
                     <Box display="flex" justifyContent="space-between" mb={1} pt={1} sx={{ borderTop: '1px solid', borderColor: 'divider' }}>
                       <Typography variant="subtitle1" fontWeight="bold">Grand Total</Typography>
-                      <Typography variant="subtitle1" fontWeight="bold">₹{doc.grand_total}</Typography>
+                      <Typography variant="subtitle1" fontWeight="bold">₹{Number(doc.grand_total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
                     </Box>
                     {doc.rounding_adjustment !== 0 && (
                       <Box display="flex" justifyContent="space-between" mb={1}>
                         <Typography variant="body2" color="text.secondary">Rounding Adjustment</Typography>
-                        <Typography variant="body2">₹{doc.rounding_adjustment}</Typography>
+                        <Typography variant="body2">₹{Number(doc.rounding_adjustment || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
                       </Box>
                     )}
                     {doc.rounded_total > 0 && doc.rounded_total !== doc.grand_total && (
                       <Box display="flex" justifyContent="space-between" mb={1} pt={1} sx={{ borderTop: '1px solid', borderColor: 'divider' }}>
                         <Typography variant="subtitle1" fontWeight="bold">Rounded Total</Typography>
-                        <Typography variant="subtitle1" fontWeight="bold">₹{doc.rounded_total}</Typography>
+                        <Typography variant="subtitle1" fontWeight="bold">₹{Number(doc.rounded_total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
                       </Box>
                     )}
                     <Box display="flex" justifyContent="space-between" mt={1}>
                       <Typography variant="body2" color="error">Outstanding</Typography>
-                      <Typography variant="body2" color="error" fontWeight="bold">₹{doc.outstanding_amount}</Typography>
+                      <Typography variant="body2" color="error" fontWeight="bold">₹{Number(doc.outstanding_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
                     </Box>
                   </Box>
                 </Box>
@@ -401,7 +401,17 @@ export default function SalesDetails() {
               <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'right', fontWeight: 'bold' }}>
                 {doc.items?.reduce((acc, curr) => acc + (Number(curr.qty) || 0), 0) || 0}
               </td>
-              <td colSpan={3} style={{ border: '1px solid #000', padding: '6px' }}></td>
+              <td colSpan={2} style={{ border: '1px solid #000', padding: '6px' }}></td>
+              <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'right', fontWeight: 'bold' }}>
+                ₹{(doc.items?.reduce((acc, curr) => {
+                  const qty = Number(curr.qty) || 0;
+                  const baseRate = Number(curr.price_list_rate) || Number(curr.rate) || 0;
+                  const grossAmount = qty * baseRate;
+                  const discountAmt = (baseRate - (Number(curr.rate) || 0)) * qty;
+                  const taxableAmount = grossAmount - discountAmt;
+                  return acc + (Number(curr.amount) || taxableAmount);
+                }, 0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </td>
             </tr>
           </tbody>
         </table>
@@ -483,24 +493,24 @@ export default function SalesDetails() {
                 <tbody>
                   <tr>
                     <td style={{ padding: '4px', fontWeight: 'bold' }}>Total Taxable:</td>
-                    <td style={{ padding: '4px', textAlign: 'right' }}>₹{doc.total}</td>
+                    <td style={{ padding: '4px', textAlign: 'right' }}>₹{Number(doc.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
                   <tr>
                     <td style={{ padding: '4px', fontWeight: 'bold' }}>Total Taxes:</td>
-                    <td style={{ padding: '4px', textAlign: 'right' }}>₹{totalTaxes.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td style={{ padding: '4px', textAlign: 'right' }}>₹{Number(totalTaxes || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
                   {actualCharges.map((charge, i) => {
                     const label = charge.account_head ? charge.account_head.split(' - ')[0] : charge.description;
                     return (
                       <tr key={`print-charge-${i}`}>
                         <td style={{ padding: '4px', fontWeight: 'bold' }}>{label}:</td>
-                        <td style={{ padding: '4px', textAlign: 'right' }}>₹{charge.tax_amount}</td>
+                        <td style={{ padding: '4px', textAlign: 'right' }}>₹{Number(charge.tax_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                       </tr>
                     );
                   })}
                   <tr>
                     <td style={{ padding: '6px 4px', fontWeight: 'bold', borderTop: '2px solid #000', borderBottom: '2px solid #000' }}>Grand Total:</td>
-                    <td style={{ padding: '6px 4px', textAlign: 'right', fontWeight: 'bold', borderTop: '2px solid #000', borderBottom: '2px solid #000' }}>₹{doc.grand_total}</td>
+                    <td style={{ padding: '6px 4px', textAlign: 'right', fontWeight: 'bold', borderTop: '2px solid #000', borderBottom: '2px solid #000' }}>₹{Number(doc.grand_total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
                 </tbody>
               </table>
