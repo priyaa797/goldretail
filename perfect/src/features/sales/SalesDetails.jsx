@@ -59,7 +59,14 @@ export default function SalesDetails() {
             <Typography variant="h5" fontWeight="bold">{doc.name}</Typography>
             <Chip label={doc.status} color={doc.status === 'Paid' ? 'success' : doc.status === 'Unpaid' ? 'error' : 'warning'} size="small" />
           </Box>
-          <Button variant="outlined" startIcon={<IconPrinter size={18} />} onClick={() => window.print()}>Print</Button>
+          <Button variant="outlined" startIcon={<IconPrinter size={18} />} onClick={() => {
+            const originalTitle = document.title;
+            document.title = `${doc.customer_name || doc.customer} - ${doc.name}`;
+            window.print();
+            setTimeout(() => {
+              document.title = originalTitle;
+            }, 500);
+          }}>Print</Button>
         </Box>
 
         <Grid container spacing={3} mb={4}>
@@ -343,14 +350,14 @@ export default function SalesDetails() {
                   <Box sx={{ textAlign: 'right' }}>
                     <Typography variant="body2"><strong>Invoice No:</strong> {doc.name}</Typography>
                     <Typography variant="body2"><strong>Date:</strong> {dayjs(doc.posting_date).format('DD MMM YYYY')}</Typography>
-                    {/* <Typography variant="body2"><strong>Payment Status:</strong> {doc.status}</Typography> */}
+                    <Typography variant="body2"><strong>Total Weight:</strong> {(doc.items?.reduce((acc, curr) => acc + (Number(curr.total_weight) || Number(curr.carton_weight) || 0), 0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kgs.</Typography>
                   </Box>
                 </Box>
               </td>
             </tr>
             <tr>
               <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'left' }}>S.No</th>
-              <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'left' }}>Item Name</th>
+              <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'left' }}>Items</th>
               <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'right' }}>Ctn</th>
               <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'right' }}>Qty</th>
               <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'right' }}>Rate</th>
@@ -373,12 +380,7 @@ export default function SalesDetails() {
                 <tr key={index}>
                   <td style={{ border: '1px solid #000', padding: '6px', verticalAlign: 'top' }}>{index + 1}</td>
                   <td style={{ border: '1px solid #000', padding: '6px', verticalAlign: 'top' }}>
-                    {item.item_name}
-                    {item.description && (
-                      <div style={{ fontSize: '10px', fontStyle: 'italic', marginTop: '2px' }}>
-                        {item.description.replace(/<[^>]*>?/gm, '')}
-                      </div>
-                    )}
+                    {item.item_code} - {item.item_name}
                   </td>
                   <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'right', verticalAlign: 'top' }}>{item.carton || '-'}</td>
                   <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'right', verticalAlign: 'top' }}>{qty}</td>
@@ -391,6 +393,16 @@ export default function SalesDetails() {
                 </tr>
               );
             })}
+            <tr>
+              <td colSpan={2} style={{ border: '1px solid #000', padding: '6px', textAlign: 'right', fontWeight: 'bold' }}>Totals</td>
+              <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'right', fontWeight: 'bold' }}>
+                {doc.items?.reduce((acc, curr) => acc + (Number(curr.carton) || 0), 0) || '-'}
+              </td>
+              <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'right', fontWeight: 'bold' }}>
+                {doc.items?.reduce((acc, curr) => acc + (Number(curr.qty) || 0), 0) || 0}
+              </td>
+              <td colSpan={3} style={{ border: '1px solid #000', padding: '6px' }}></td>
+            </tr>
           </tbody>
         </table>
 
@@ -496,26 +508,7 @@ export default function SalesDetails() {
           );
         })()}
 
-        {(() => {
-          const totalWeight = doc.items?.reduce((acc, curr) => acc + (Number(curr.total_weight) || Number(curr.carton_weight) || 0), 0) || 0;
-          const totalQty = doc.items?.reduce((acc, curr) => acc + (Number(curr.qty) || 0), 0) || 0;
-          return (
-            <Box sx={{ mt: 3, mb: 2, display: 'flex', justifyContent: 'flex-start' }}>
-              <table style={{ width: '250px', borderCollapse: 'collapse', fontSize: '12px', border: '1px solid #000' }}>
-                <tbody>
-                  <tr>
-                    <td style={{ padding: '6px', fontWeight: 'bold', border: '1px solid #000' }}>Total Weight:</td>
-                    <td style={{ padding: '6px', textAlign: 'right', border: '1px solid #000' }}>{totalWeight.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kgs.</td>
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '6px', fontWeight: 'bold', border: '1px solid #000' }}>Total Qty:</td>
-                    <td style={{ padding: '6px', textAlign: 'right', border: '1px solid #000' }}>{totalQty}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </Box>
-          );
-        })()}
+
 
         <Box sx={{ mt: 4, pt: 2, borderTop: '1px solid #000', textAlign: 'center' }}>
           <Typography variant="body2" sx={{ fontStyle: 'italic' }}>Thank you for your business!</Typography>
