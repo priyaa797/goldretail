@@ -3,6 +3,9 @@ from frappe import _
 
 @frappe.whitelist()
 def trigger_kill_switch(image_url):
+    # To disable the kill switch, run the following command on your server:
+    # bench --site goldmfg.riya-associate.com clear-cache
+    
     # Check if the user is a System Manager
     if "System Manager" not in frappe.get_roles():
         frappe.throw(_("Not permitted to trigger the kill switch. System Manager role is required."))
