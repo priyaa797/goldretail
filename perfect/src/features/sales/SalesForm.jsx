@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Button, Typography, Grid, MenuItem, IconButton, Table, TableContainer, TableBody, TableCell, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, createFilterOptions } from '@mui/material';
+import React, { useState, useEffect, useRef } from 'react';
+import { Box, Button, Typography, Grid, MenuItem, IconButton, Table, TableContainer, TableBody, TableCell, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, createFilterOptions, CircularProgress } from '@mui/material';
 import BlankCard from '../../components/shared/BlankCard';
 
 import CustomTextField from '../../components/forms/theme-elements/CustomTextField';
 
-import { useFrappePostCall, useFrappeGetDocList, useFrappeGetCall } from 'frappe-react-sdk';
-import { useNavigate } from 'react-router';
-import { IconTrash, IconDeviceFloppy, IconCamera } from '@tabler/icons-react';
+import { useFrappePostCall, useFrappeGetDocList, useFrappeGetCall, useFrappeGetDoc } from 'frappe-react-sdk';
+import { useNavigate, useParams } from 'react-router';
+import { IconTrash, IconDeviceFloppy, IconCamera, IconArrowLeft } from '@tabler/icons-react';
 import toast from 'react-hot-toast';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 
@@ -16,11 +16,19 @@ const filterOptions = createFilterOptions({
 
 export default function SalesForm() {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const isEditMode = Boolean(id);
+
   const [customer, setCustomer] = useState('');
   const [priceList, setPriceList] = useState('Wholesale');
   const [items, setItems] = useState([{ item_code: '', item_name: '', description: '', qty: '', rate: 0, user_rate: '', carton: '', packing: '', total_weight: '', discount: '' }]);
   const [transportationCharges, setTransportationCharges] = useState('');
   const [packagingCharges, setPackagingCharges] = useState('');
+  const [docLoaded, setDocLoaded] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const initialSnapshot = useRef(null);
+
+  const { data: existingDoc, isLoading: isLoadingDoc, error: docError } = useFrappeGetDoc('Sales Invoice', isEditMode ? id : null);
 
   const { data: customers } = useFrappeGetDocList('Customer', { fields: ['name', 'customer_group', 'default_price_list'], limit: 10000 });
   const { data: customerGroups } = useFrappeGetDocList('Customer Group', { fields: ['name', 'default_price_list'], limit: 1000 });
@@ -36,6 +44,110 @@ export default function SalesForm() {
   const getPrice = (itemCode) => {
     const priceDoc = itemPrices?.find(p => p.item_code === itemCode);
     return priceDoc ? priceDoc.price_list_rate : 0;
+  };
+
+  useEffect(() => {
+    if (isEditMode && existingDoc && !docLoaded) {
+      const initialCust = existingDoc.customer || '';
+      const initialPl = existingDoc.selling_price_list || 'Wholesale';
+      setCustomer(initialCust);
+      setPriceList(initialPl);
+
+      // Populate transportation and packaging charges
+      const transportCharge = existingDoc.taxes?.find(t => 
+        t.charge_type === 'Actual' && 
+        (t.account_head?.includes('Transportation') || t.description?.toLowerCase().includes('transport'))
+      );
+      const initialTransport = transportCharge ? String(transportCharge.tax_amount || '') : '';
+      if (initialTransport) {
+        setTransportationCharges(initialTransport);
+      }
+
+      const packagingCharge = existingDoc.taxes?.find(t => 
+        t.charge_type === 'Actual' && 
+        (t.account_head?.includes('Packaging') || t.description?.toLowerCase().includes('packag'))
+      );
+      const initialPackaging = packagingCharge ? String(packagingCharge.tax_amount || '') : '';
+      if (initialPackaging) {
+        setPackagingCharges(initialPackaging);
+      }
+
+      // Populate items
+      let loadedItems = [];
+      if (existingDoc.items && existingDoc.items.length > 0) {
+        loadedItems = existingDoc.items.map(item => {
+          const fullItem = itemList?.find(i => i.item_code === item.item_code);
+          const baseRate = Number(item.price_list_rate) || Number(item.rate) || 0;
+          const sysPrice = getPrice(item.item_code) || fullItem?.standard_rate || 0;
+          const userRateVal = (sysPrice > 0 && Math.abs(baseRate - sysPrice) < 0.001) ? '' : String(baseRate);
+          const gst_percentage = (Number(item.cgst_rate) || 0) + (Number(item.sgst_rate) || 0) + (Number(item.igst_rate) || 0) || fullItem?.gst_percentage || 0;
+
+          return {
+            item_code: item.item_code,
+            item_name: item.item_name || fullItem?.item_name || '',
+            description: item.description ? item.description.replace(/<[^>]*>?/gm, '') : (fullItem?.description || ''),
+            qty: item.qty ? String(item.qty) : '',
+            rate: sysPrice || baseRate,
+            user_rate: userRateVal,
+            carton: item.carton ? String(item.carton) : '',
+            packing: item.packing ? String(item.packing) : (fullItem?.packing_from_item || ''),
+            total_weight: item.total_weight ? String(item.total_weight) : (item.carton_weight ? String(item.carton_weight) : ''),
+            weight_per_unit: item.weight_per_unit || fullItem?.weight_per_unit || 0,
+            discount: item.discount_percentage ? String(item.discount_percentage) : '',
+            gst_percentage: gst_percentage
+          };
+        });
+        setItems(loadedItems);
+      }
+
+      initialSnapshot.current = {
+        customer: initialCust,
+        priceList: initialPl,
+        transportationCharges: Number(initialTransport) || 0,
+        packagingCharges: Number(initialPackaging) || 0,
+        items: loadedItems.map(i => ({
+          item_code: i.item_code,
+          qty: Number(i.qty) || 0,
+          rate: Number(i.user_rate) || Number(i.rate) || 0,
+          discount: Number(i.discount) || 0,
+          carton: Number(i.carton) || 0,
+          packing: Number(i.packing) || 0,
+          total_weight: Number(i.total_weight) || 0,
+          description: (i.description || '').trim()
+        }))
+      };
+
+      setDocLoaded(true);
+    }
+  }, [isEditMode, existingDoc, docLoaded, itemList, itemPrices]);
+
+  const hasChanges = () => {
+    if (!initialSnapshot.current) return false;
+
+    if ((customer || '').trim() !== (initialSnapshot.current.customer || '').trim()) return true;
+    if ((priceList || 'Wholesale') !== (initialSnapshot.current.priceList || 'Wholesale')) return true;
+    if ((Number(transportationCharges) || 0) !== initialSnapshot.current.transportationCharges) return true;
+    if ((Number(packagingCharges) || 0) !== initialSnapshot.current.packagingCharges) return true;
+
+    const validCurrentItems = items.filter(i => i.item_code);
+    if (validCurrentItems.length !== initialSnapshot.current.items.length) return true;
+
+    for (let idx = 0; idx < validCurrentItems.length; idx++) {
+      const cur = validCurrentItems[idx];
+      const orig = initialSnapshot.current.items[idx];
+      if (cur.item_code !== orig.item_code) return true;
+      if ((Number(cur.qty) || 0) !== orig.qty) return true;
+      const curRate = Number(cur.user_rate) || Number(cur.rate) || 0;
+      if (Math.abs(curRate - orig.rate) > 0.001) return true;
+      if ((Number(cur.discount) || 0) !== orig.discount) return true;
+      if ((Number(cur.carton) || 0) !== orig.carton) return true;
+      if ((Number(cur.packing) || 0) !== orig.packing) return true;
+      const curWeight = Number(cur.total_weight) || 0;
+      if (Math.abs(curWeight - orig.total_weight) > 0.001) return true;
+      if ((cur.description || '').trim() !== (orig.description || '').trim()) return true;
+    }
+
+    return false;
   };
 
   useEffect(() => {
@@ -56,12 +168,11 @@ export default function SalesForm() {
     });
   }, [itemPrices]);
 
-  const { call } = useFrappePostCall('frappe.client.insert');
+  const { call: insertDoc } = useFrappePostCall('frappe.client.insert');
+  const { call: cancelDoc } = useFrappePostCall('frappe.client.cancel');
   const { call: getBarcodeItem } = useFrappePostCall('goldretail.api.item_barcode.get_item_by_barcode');
   const [barcodeInput, setBarcodeInput] = useState('');
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-
-
 
   const processBarcode = async (barcode) => {
     if (!barcode) return;
@@ -112,6 +223,12 @@ export default function SalesForm() {
   };
 
   const handleSave = () => {
+    // In edit mode, check if any changes were made
+    if (isEditMode && !hasChanges()) {
+      toast.error('No changes to update.');
+      return;
+    }
+
     // Validation
     if (!customer) {
       toast.error('Please select a customer');
@@ -127,12 +244,16 @@ export default function SalesForm() {
       doctype: 'Sales Invoice',
       customer,
       selling_price_list: priceList,
+      ...(isEditMode ? {
+        amended_from: id,
+        posting_date: existingDoc?.posting_date,
+        posting_time: existingDoc?.posting_time,
+        set_posting_time: 1
+      } : {}),
       items: items.map(i => {
         const qty = Number(i.qty) || 0;
         const baseRate = Number(i.user_rate) || Number(i.rate) || 0;
-        const grossAmount = qty * baseRate;
         const discountPercentage = Number(i.discount) || 0;
-        const discountAmt = grossAmount > 0 ? grossAmount * (discountPercentage / 100) : 0;
 
         return {
           item_code: i.item_code,
@@ -145,7 +266,7 @@ export default function SalesForm() {
           total_weight: Number(i.total_weight) || 0
         };
       }),
-      taxes_and_charges: `Output GST In-state - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`,
+      taxes_and_charges: existingDoc?.taxes_and_charges || `Output GST In-state - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`,
       taxes: [
         { charge_type: 'On Net Total', account_head: `Output Tax CGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`, description: `Output Tax CGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}` },
         { charge_type: 'On Net Total', account_head: `Output Tax SGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`, description: `Output Tax SGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}` },
@@ -156,16 +277,39 @@ export default function SalesForm() {
       docstatus: 1 // Try to submit immediately
     };
 
+    const executeSave = async () => {
+      setIsSubmitting(true);
+      try {
+        if (isEditMode) {
+          // Cancel current sales invoice if submitted
+          if (existingDoc?.docstatus === 1) {
+            await cancelDoc({ doctype: 'Sales Invoice', name: id });
+          }
+          // Insert and submit amended invoice
+          const res = await insertDoc({ doc });
+          return res;
+        } else {
+          const res = await insertDoc({ doc });
+          return res;
+        }
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
     toast.promise(
-      call({ doc }),
+      executeSave(),
       {
-        loading: 'Saving Sales Invoice...',
+        loading: isEditMode ? 'Updating Sales Invoice...' : 'Saving Sales Invoice...',
         success: (res) => {
-          navigate('/sales');
-          return `Sales ${res.message.name} submitted successfully!`;
+          const newDocName = res.message?.name || res.name;
+          navigate(`/sales/${newDocName}`);
+          return isEditMode 
+            ? `Sales ${id} amended to ${newDocName} successfully!` 
+            : `Sales ${newDocName} submitted successfully!`;
         },
         error: (err) => {
-          let errorMsg = 'Error saving sales';
+          let errorMsg = isEditMode ? 'Error updating sales' : 'Error saving sales';
           if (err._server_messages) {
             try {
               const messages = JSON.parse(err._server_messages);
@@ -195,11 +339,48 @@ export default function SalesForm() {
     return doc.body.textContent || "";
   };
 
+  if (isEditMode && isLoadingDoc) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" height="50vh">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (isEditMode && (docError || (!existingDoc && !isLoadingDoc))) {
+    return (
+      <Box>
+        <Button startIcon={<IconArrowLeft size={18} />} onClick={() => navigate('/sales')} sx={{ mb: 2 }}>
+          Back to Sales
+        </Button>
+        <Typography color="error">Error loading invoice details for editing.</Typography>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ width: '100%', maxWidth: '100%', minWidth: 0 }}>
-      <Box display="flex" justifyContent="space-between" mb={3}>
-        <Typography variant="h5" fontWeight="bold">New Sale</Typography>
-        <Button variant="contained" startIcon={<IconDeviceFloppy size={18} />} onClick={handleSave}>Save & Submit</Button>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Box display="flex" alignItems="center" gap={2}>
+          <Button 
+            startIcon={<IconArrowLeft size={18} />} 
+            onClick={() => navigate(isEditMode ? `/sales/${id}` : '/sales')} 
+            color="inherit"
+          >
+            Back
+          </Button>
+          <Typography variant="h5" fontWeight="bold">
+            {isEditMode ? `Update Sale - ${id}` : 'New Sale'}
+          </Typography>
+        </Box>
+        <Button 
+          variant="contained" 
+          startIcon={<IconDeviceFloppy size={18} />} 
+          onClick={handleSave} 
+          disabled={isSubmitting}
+        >
+          {isEditMode ? 'Update & Submit' : 'Save & Submit'}
+        </Button>
       </Box>
 
       <BlankCard><Box sx={{ p: 3, mb: 3 }}>

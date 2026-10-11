@@ -46,6 +46,7 @@ const Router = [
           { path: '/sales', exact: true, element: <SalesList /> },
           { path: '/sales/new', exact: true, element: <SalesForm /> },
           { path: '/sales/:id', exact: true, element: <SalesDetails /> },
+          { path: '/sales/:id/edit', exact: true, element: <SalesForm /> },
           { path: '/purchase', exact: true, element: <PurchaseList /> },
           { path: '/purchase/new', exact: true, element: <PurchaseForm /> },
           { path: '/purchase/:id', exact: true, element: <PurchaseDetails /> },

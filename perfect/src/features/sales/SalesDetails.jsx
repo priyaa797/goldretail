@@ -5,7 +5,7 @@ import CustomTextField from '../../components/forms/theme-elements/CustomTextFie
 
 import { useParams, useNavigate } from 'react-router';
 import { useFrappeGetDoc } from 'frappe-react-sdk';
-import { IconArrowLeft, IconPrinter } from '@tabler/icons-react';
+import { IconArrowLeft, IconPrinter, IconEdit } from '@tabler/icons-react';
 import dayjs from 'dayjs';
 
 export default function SalesDetails() {
@@ -59,14 +59,23 @@ export default function SalesDetails() {
             <Typography variant="h5" fontWeight="bold">{doc.name}</Typography>
             <Chip label={doc.status} color={doc.status === 'Paid' ? 'success' : doc.status === 'Unpaid' ? 'error' : 'warning'} size="small" />
           </Box>
-          <Button variant="outlined" startIcon={<IconPrinter size={18} />} onClick={() => {
-            const originalTitle = document.title;
-            document.title = `${doc.customer_name || doc.customer} - ${doc.name}`;
-            window.print();
-            setTimeout(() => {
-              document.title = originalTitle;
-            }, 500);
-          }}>Print</Button>
+          <Box display="flex" alignItems="center" gap={2}>
+            <Button
+              variant="contained"
+              startIcon={<IconEdit size={18} />}
+              onClick={() => navigate(`/sales/${encodeURIComponent(doc.name)}/edit`)}
+            >
+              Update
+            </Button>
+            <Button variant="outlined" startIcon={<IconPrinter size={18} />} onClick={() => {
+              const originalTitle = document.title;
+              document.title = `${doc.customer_name || doc.customer} - ${doc.name}`;
+              window.print();
+              setTimeout(() => {
+                document.title = originalTitle;
+              }, 500);
+            }}>Print</Button>
+          </Box>
         </Box>
 
         <Grid container spacing={3} mb={4}>
