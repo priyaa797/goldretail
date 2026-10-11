@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Box, Button, Typography, Grid, MenuItem, IconButton, Table, TableBody, TableCell, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, createFilterOptions } from '@mui/material';
 import BlankCard from '../../components/shared/BlankCard';
 
@@ -19,6 +19,8 @@ export default function PurchaseForm() {
   const [supplier, setSupplier] = useState('');
   const [billNo, setBillNo] = useState('');
   const [items, setItems] = useState([{ item_code: '', item_name: '', description: '', qty: '', rate: 0, carton: '', packing: '', total_weight: '', discount: '' }]);
+  const [openRowIndex, setOpenRowIndex] = useState(null);
+  const focusRowIndexRef = useRef(null);
 
   const { data: suppliers } = useFrappeGetDocList('Supplier', { fields: ['name'] });
   const { data: itemListResponse, mutate: mutateItemList } = useFrappeGetCall('goldretail.api.item_barcode.get_all_items');
@@ -151,8 +153,18 @@ export default function PurchaseForm() {
     );
   };
 
-  const addItem = () => setItems([...items, { item_code: '', item_name: '', description: '', qty: '', rate: 0, carton: '', packing: '', total_weight: '', discount: '', weight_per_unit: 0 }]);
-  const removeItem = (index) => setItems(items.filter((_, i) => i !== index));
+  const addItem = () => {
+    const newIndex = items.length;
+    focusRowIndexRef.current = newIndex;
+    setOpenRowIndex(newIndex);
+    setItems([...items, { item_code: '', item_name: '', description: '', qty: '', rate: 0, carton: '', packing: '', total_weight: '', discount: '', weight_per_unit: 0 }]);
+  };
+  const removeItem = (index) => {
+    if (openRowIndex === index) {
+      setOpenRowIndex(null);
+    }
+    setItems(items.filter((_, i) => i !== index));
+  };
 
   const stripHtml = (html) => {
     if (!html) return '';
@@ -290,6 +302,13 @@ export default function PurchaseForm() {
                 </TableCell>
                 <TableCell>
                   <Autocomplete
+                    open={openRowIndex === idx}
+                    onOpen={() => setOpenRowIndex(idx)}
+                    onClose={() => {
+                      if (openRowIndex === idx) setOpenRowIndex(null);
+                    }}
+                    openOnFocus
+                    autoHighlight
                     options={[...(itemList || []), { is_create_btn: true, item_code: '+ Create New Item' }]}
                     filterOptions={filterOptions}
                     getOptionLabel={(option) => option?.item_code || ''}
@@ -311,6 +330,7 @@ export default function PurchaseForm() {
                       );
                     }}
                     onChange={(e, newValue) => {
+                      setOpenRowIndex(null);
                       if (newValue?.is_create_btn) {
                         setNewItemData({ item_code: '', item_name: '', weight_per_unit: '', nos_per_carton: '' });
                         setActiveRowIndex(idx);
@@ -350,7 +370,30 @@ export default function PurchaseForm() {
                       }
                       setItems(newItems);
                     }}
-                    renderInput={(params) => <CustomTextField {...params} placeholder="Search Item..." variant="outlined" size="small" />}
+                    renderInput={(params) => (
+                      <CustomTextField
+                        {...params}
+                        autoFocus={openRowIndex === idx}
+                        inputRef={(el) => {
+                          if (params.inputProps?.ref) {
+                            if (typeof params.inputProps.ref === 'function') {
+                              params.inputProps.ref(el);
+                            } else {
+                              params.inputProps.ref.current = el;
+                            }
+                          }
+                          if (focusRowIndexRef.current === idx && el) {
+                            focusRowIndexRef.current = null;
+                            setTimeout(() => {
+                              el.focus();
+                            }, 50);
+                          }
+                        }}
+                        placeholder="Search Item..."
+                        variant="outlined"
+                        size="small"
+                      />
+                    )}
                   />
                 </TableCell>
                 <TableCell>

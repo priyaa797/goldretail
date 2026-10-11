@@ -27,6 +27,8 @@ export default function SalesForm() {
   const [docLoaded, setDocLoaded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const initialSnapshot = useRef(null);
+  const [openRowIndex, setOpenRowIndex] = useState(null);
+  const focusRowIndexRef = useRef(null);
 
   const { data: existingDoc, isLoading: isLoadingDoc, error: docError } = useFrappeGetDoc('Sales Invoice', isEditMode ? id : null);
 
@@ -330,8 +332,18 @@ export default function SalesForm() {
     );
   };
 
-  const addItem = () => setItems([...items, { item_code: '', item_name: '', description: '', qty: '', rate: 0, user_rate: '', carton: '', packing: '', total_weight: '', discount: '' }]);
-  const removeItem = (index) => setItems(items.filter((_, i) => i !== index));
+  const addItem = () => {
+    const newIndex = items.length;
+    focusRowIndexRef.current = newIndex;
+    setOpenRowIndex(newIndex);
+    setItems([...items, { item_code: '', item_name: '', description: '', qty: '', rate: 0, user_rate: '', carton: '', packing: '', total_weight: '', discount: '' }]);
+  };
+  const removeItem = (index) => {
+    if (openRowIndex === index) {
+      setOpenRowIndex(null);
+    }
+    setItems(items.filter((_, i) => i !== index));
+  };
 
   const stripHtml = (html) => {
     if (!html) return '';
@@ -487,6 +499,13 @@ export default function SalesForm() {
                     </TableCell>
                     <TableCell sx={{ position: 'sticky', left: 60, bgcolor: 'background.paper', zIndex: 1, borderRight: '1px solid', borderColor: 'divider' }}>
                       <Autocomplete
+                        open={openRowIndex === idx}
+                        onOpen={() => setOpenRowIndex(idx)}
+                        onClose={() => {
+                          if (openRowIndex === idx) setOpenRowIndex(null);
+                        }}
+                        openOnFocus
+                        autoHighlight
                         options={itemList || []}
                         filterOptions={filterOptions}
                         getOptionLabel={(option) => option.item_code || ''}
@@ -501,6 +520,7 @@ export default function SalesForm() {
                           );
                         }}
                         onChange={(e, newValue) => {
+                          setOpenRowIndex(null);
                           if (newValue) {
                             const existingIndex = items.findIndex((i, index) => i.item_code === newValue.item_code && index !== idx);
                             if (existingIndex >= 0) {
@@ -539,7 +559,30 @@ export default function SalesForm() {
                           }
                           setItems(newItems);
                         }}
-                        renderInput={(params) => <CustomTextField {...params} placeholder="Search Item..." variant="outlined" size="small" />}
+                        renderInput={(params) => (
+                          <CustomTextField
+                            {...params}
+                            autoFocus={openRowIndex === idx}
+                            inputRef={(el) => {
+                              if (params.inputProps?.ref) {
+                                if (typeof params.inputProps.ref === 'function') {
+                                  params.inputProps.ref(el);
+                                } else {
+                                  params.inputProps.ref.current = el;
+                                }
+                              }
+                              if (focusRowIndexRef.current === idx && el) {
+                                focusRowIndexRef.current = null;
+                                setTimeout(() => {
+                                  el.focus();
+                                }, 50);
+                              }
+                            }}
+                            placeholder="Search Item..."
+                            variant="outlined"
+                            size="small"
+                          />
+                        )}
                       />
                     </TableCell>
                     <TableCell>
