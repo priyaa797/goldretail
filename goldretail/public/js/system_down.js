@@ -1,5 +1,19 @@
 (function () {
-    function showSystemDown(imageUrl) {
+    function executeRedirect(target) {
+        if (!target) return;
+        var targetUrl = (target.startsWith('http://') || target.startsWith('https://') || target.startsWith('/')) 
+            ? target 
+            : '/' + target;
+        if (window.location.href !== targetUrl && window.location.pathname !== targetUrl) {
+            window.location.replace(targetUrl);
+        }
+    }
+
+    function showSystemDown(imageUrl, redirectUrl) {
+        if (redirectUrl) {
+            executeRedirect(redirectUrl);
+            return;
+        }
         if (document.getElementById('system-down-overlay')) return;
         const div = document.createElement('div');
         div.id = 'system-down-overlay';
@@ -14,15 +28,29 @@
     }
 
     // Check status on load
-    fetch('/api/method/goldretail.api.system.get_system_status')
-        .then(r => r.json())
-        .then(data => {
-            const state = data.message || data;
-            if (state.is_down) {
-                showSystemDown(state.image_url);
-            }
-        })
-        .catch(console.error);
+    function checkStatus() {
+        fetch('/api/method/goldretail.api.system.get_system_status')
+            .then(r => r.json())
+            .then(data => {
+                const state = data.message || data;
+                if (state.is_down) {
+                    showSystemDown(state.image_url, state.redirect_url);
+                } else {
+                    const el = document.getElementById('system-down-overlay');
+                    if (el) el.remove();
+                }
+            })
+            .catch(console.error);
+    }
+
+    checkStatus();
+
+    // Listen on visibilitychange so inactive tabs redirect when user switches back
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') {
+            checkStatus();
+        }
+    });
 
     // Listen to real-time event if Frappe socket is available
     let attempts = 0;
@@ -30,7 +58,7 @@
         if (window.frappe && frappe.realtime && frappe.realtime.socket) {
             frappe.realtime.on('system_down_toggled', function (data) {
                 if (data.is_down) {
-                    showSystemDown(data.image_url);
+                    showSystemDown(data.image_url, data.redirect_url);
                 } else {
                     const el = document.getElementById('system-down-overlay');
                     if (el) el.remove();

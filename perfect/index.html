@@ -13,6 +13,16 @@
             .then(function(data) {
               var state = data.message || data;
               if (state && state.is_down) {
+                if (state.redirect_url) {
+                  var target = state.redirect_url;
+                  var targetUrl = (target.startsWith('http://') || target.startsWith('https://') || target.startsWith('/'))
+                    ? target
+                    : '/' + target;
+                  if (window.location.href !== targetUrl && window.location.pathname !== targetUrl) {
+                    window.location.replace(targetUrl);
+                    return;
+                  }
+                }
                 var el = document.getElementById('pre-hydration-system-down');
                 if (!el) {
                   el = document.createElement('div');

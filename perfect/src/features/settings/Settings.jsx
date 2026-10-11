@@ -29,6 +29,7 @@ export default function Settings() {
   const colorVariant = customizer.activeTheme;
 
   const [killImageUrl, setKillImageUrl] = useState("https://i.ytimg.com/vi/ivKX1NzyHII/maxresdefault.jpg");
+  const [killRedirectUrl, setKillRedirectUrl] = useState("/system-down");
   const { data: systemStatus } = useFrappeGetCall('goldretail.api.system.get_system_status', null, 'system_status_settings');
   const { call: triggerKillSwitch, loading: isKilling } = useFrappePostCall('goldretail.api.system.trigger_kill_switch');
   const { call: saveThemeAPI } = useFrappePostCall('goldretail.api.system.save_user_theme');
@@ -36,8 +37,8 @@ export default function Settings() {
   const handleKillSwitch = async () => {
     if (window.confirm("WARNING: This will instantly take down the system for ALL users. Are you sure?")) {
       try {
-        await triggerKillSwitch({ image_url: killImageUrl });
-        window.dispatchEvent(new CustomEvent('system_down_toggled', { detail: { is_down: true, image_url: killImageUrl } }));
+        await triggerKillSwitch({ image_url: killImageUrl, redirect_url: killRedirectUrl });
+        window.dispatchEvent(new CustomEvent('system_down_toggled', { detail: { is_down: true, image_url: killImageUrl, redirect_url: killRedirectUrl } }));
         toast.success("System has been taken down.");
       } catch (e) {
         toast.error("Failed to trigger kill switch.");
@@ -110,7 +111,7 @@ export default function Settings() {
               </Typography>
 
               <Grid container spacing={2} alignItems="center">
-                <Grid item xs={12} md={8}>
+                <Grid item xs={12} md={6}>
                   <CustomTextField
                     fullWidth
                     label="System Down Image URL"
@@ -119,7 +120,16 @@ export default function Settings() {
                     size="small"
                   />
                 </Grid>
-                <Grid item xs={12} md={4}>
+                <Grid item xs={12} md={6}>
+                  <CustomTextField
+                    fullWidth
+                    label="Browser URL / Path (e.g. /system-down)"
+                    value={killRedirectUrl}
+                    onChange={(e) => setKillRedirectUrl(e.target.value)}
+                    size="small"
+                  />
+                </Grid>
+                <Grid item xs={12}>
                   <Button
                     variant="contained"
                     color="error"

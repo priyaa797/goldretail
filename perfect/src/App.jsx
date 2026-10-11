@@ -34,10 +34,24 @@ function App() {
     }
   }, [systemStatusData]);
 
+  const executeRedirect = (target) => {
+    if (!target) return;
+    const targetUrl = (target.startsWith('http://') || target.startsWith('https://') || target.startsWith('/'))
+      ? target
+      : `/${target}`;
+    if (window.location.href !== targetUrl && window.location.pathname !== targetUrl) {
+      window.location.replace(targetUrl);
+    }
+  };
+
   useEffect(() => {
-    if (systemDownState) {
-      const preEl = document.getElementById('pre-hydration-system-down');
-      if (preEl) preEl.remove();
+    if (!systemDownState) return;
+
+    const preEl = document.getElementById('pre-hydration-system-down');
+    if (preEl) preEl.remove();
+
+    if (systemDownState.is_down && systemDownState.redirect_url) {
+      executeRedirect(systemDownState.redirect_url);
     }
   }, [systemDownState]);
 
@@ -45,6 +59,9 @@ function App() {
   useFrappeEventListener('system_down_toggled', (data) => {
     if (data && typeof data.is_down !== 'undefined') {
       setSystemDownState(data);
+      if (data.is_down && data.redirect_url) {
+        executeRedirect(data.redirect_url);
+      }
     }
   });
 
@@ -53,10 +70,35 @@ function App() {
     const handleLocalToggle = (e) => {
       if (e.detail && typeof e.detail.is_down !== 'undefined') {
         setSystemDownState(e.detail);
+        if (e.detail.is_down && e.detail.redirect_url) {
+          executeRedirect(e.detail.redirect_url);
+        }
       }
     };
     window.addEventListener('system_down_toggled', handleLocalToggle);
     return () => window.removeEventListener('system_down_toggled', handleLocalToggle);
+  }, []);
+
+  // Ensure inactive tabs immediately check and redirect when user switches back to them
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetch('/api/method/goldretail.api.system.get_system_status')
+          .then((r) => r.json())
+          .then((data) => {
+            const state = data.message || data;
+            if (state && state.is_down) {
+              setSystemDownState(state);
+              if (state.redirect_url) {
+                executeRedirect(state.redirect_url);
+              }
+            }
+          })
+          .catch(() => {});
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
   const { data: userTheme } = useFrappeGetCall('goldretail.api.system.get_user_theme');
