@@ -5,6 +5,34 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>perfect</title>
+    <script>
+      (function() {
+        try {
+          fetch('/api/method/goldretail.api.system.get_system_status')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+              var state = data.message || data;
+              if (state && state.is_down) {
+                var el = document.getElementById('pre-hydration-system-down');
+                if (!el) {
+                  el = document.createElement('div');
+                  el.id = 'pre-hydration-system-down';
+                  el.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99999999;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;';
+                  if (state.image_url) {
+                    var img = document.createElement('img');
+                    img.src = state.image_url;
+                    img.alt = 'System Down';
+                    img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;';
+                    el.appendChild(img);
+                  }
+                  document.body.appendChild(el);
+                }
+              }
+            })
+            .catch(function(e) { console.error(e); });
+        } catch(e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

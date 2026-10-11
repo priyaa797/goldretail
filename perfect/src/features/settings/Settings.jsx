@@ -37,6 +37,7 @@ export default function Settings() {
     if (window.confirm("WARNING: This will instantly take down the system for ALL users. Are you sure?")) {
       try {
         await triggerKillSwitch({ image_url: killImageUrl });
+        window.dispatchEvent(new CustomEvent('system_down_toggled', { detail: { is_down: true, image_url: killImageUrl } }));
         toast.success("System has been taken down.");
       } catch (e) {
         toast.error("Failed to trigger kill switch.");

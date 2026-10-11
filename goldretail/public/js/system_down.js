@@ -3,7 +3,7 @@
         if (document.getElementById('system-down-overlay')) return;
         const div = document.createElement('div');
         div.id = 'system-down-overlay';
-        div.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9999999;background:black;display:flex;align-items:center;justify-content:center;';
+        div.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99999999;background:black;display:flex;align-items:center;justify-content:center;';
         if (imageUrl) {
             const img = document.createElement('img');
             img.src = imageUrl;
