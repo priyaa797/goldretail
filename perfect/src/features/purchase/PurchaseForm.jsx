@@ -6,9 +6,10 @@ import CustomTextField from '../../components/forms/theme-elements/CustomTextFie
 
 import { useFrappePostCall, useFrappeGetDocList, useFrappeGetCall } from 'frappe-react-sdk';
 import { useNavigate } from 'react-router';
-import { IconTrash, IconDeviceFloppy, IconCamera } from '@tabler/icons-react';
+import { IconTrash, IconDeviceFloppy, IconCamera, IconFileSpreadsheet, IconAlertTriangle } from '@tabler/icons-react';
 import toast from 'react-hot-toast';
 import { Html5QrcodeScanner } from 'html5-qrcode';
+import PurchaseExcelImportDialog from './PurchaseExcelImportDialog';
 
 const filterOptions = createFilterOptions({
   stringify: (option) => option.is_create_btn ? option.item_code : `${option.item_code} ${option.item_name || ''}`,
@@ -28,6 +29,7 @@ export default function PurchaseForm() {
 
   const { call: insertDoc } = useFrappePostCall('frappe.client.insert');
   const { call: getBarcodeItem } = useFrappePostCall('goldretail.api.item_barcode.get_item_by_barcode');
+  const { call: updateCartonQtyCall } = useFrappePostCall('goldretail.api.purchase_import.update_item_carton_qty');
   const [barcodeInput, setBarcodeInput] = useState('');
   const [isScannerOpen, setIsScannerOpen] = useState(false);
 
@@ -35,6 +37,12 @@ export default function PurchaseForm() {
   const [activeRowIndex, setActiveRowIndex] = useState(null);
   const [newItemData, setNewItemData] = useState({ item_code: '', item_name: '', weight_per_unit: '', nos_per_carton: '' });
   const [isCreatingItem, setIsCreatingItem] = useState(false);
+
+  // Excel Import & Pre-Submission Mismatch Dialog States
+  const [importExcelDialogOpen, setImportExcelDialogOpen] = useState(false);
+  const [mismatchWarningDialogOpen, setMismatchWarningDialogOpen] = useState(false);
+  const [mismatchedItems, setMismatchedItems] = useState([]);
+  const [isUpdatingMaster, setIsUpdatingMaster] = useState(false);
 
   useEffect(() => {
     // Watch for carton and packing changes and update qty automatically
@@ -94,22 +102,7 @@ export default function PurchaseForm() {
     }
   };
 
-  const handleSave = () => {
-    // Validation
-    if (!supplier) {
-      toast.error('Please select a supplier');
-      return;
-    }
-    if (!billNo) {
-      toast.error('Please enter Supplier Invoice No (Bill No)');
-      return;
-    }
-    const invalidItems = items.filter(i => !i.item_code || (Number(i.qty) || 0) <= 0 || (Number(i.rate) || 0) <= 0);
-    if (invalidItems.length > 0) {
-      toast.error('Please ensure all items have an Item Code, valid Quantity, and valid Rate.');
-      return;
-    }
-
+  const submitPurchaseInvoice = () => {
     const doc = {
       doctype: 'Purchase Invoice',
       supplier,
@@ -117,7 +110,6 @@ export default function PurchaseForm() {
       items: items.map(i => {
         const qty = Number(i.qty) || 0;
         const baseRate = Number(i.rate) || 0;
-        const grossAmount = qty * baseRate;
         const discountPercentage = Number(i.discount) || 0;
 
         return {
@@ -151,6 +143,107 @@ export default function PurchaseForm() {
         error: (err) => err.message || 'Error saving purchase'
       }
     );
+  };
+
+  const handleSave = () => {
+    // 1. Basic validation
+    if (!supplier) {
+      toast.error('Please select a supplier');
+      return;
+    }
+    if (!billNo) {
+      toast.error('Please enter Supplier Invoice No (Bill No)');
+      return;
+    }
+    const invalidItems = items.filter(i => !i.item_code || (Number(i.qty) || 0) <= 0 || (Number(i.rate) || 0) <= 0);
+    if (invalidItems.length > 0) {
+      toast.error('Please ensure all items have an Item Code, valid Quantity, and valid Rate.');
+      return;
+    }
+
+    // 2. Pre-submission Carton Quantity Mismatch Check
+    // If any item has a carton packing that differs from the Item Master value:
+    const mismatches = [];
+    for (const itm of items) {
+      if (!itm.item_code) continue;
+      const full = itemList?.find(i => i.item_code === itm.item_code);
+      const masterPacking = Number(full?.packing_from_item) || 0;
+      const currentPacking = Number(itm.packing) || 0;
+
+      // Only check if carton packing is specified on the purchase row and differs from master
+      if (currentPacking > 0 && Math.abs(currentPacking - masterPacking) > 0.0001) {
+        mismatches.push({
+          item_code: itm.item_code,
+          item_name: itm.item_name || full?.item_name || itm.item_code,
+          current_packing: currentPacking,
+          master_packing: masterPacking
+        });
+      }
+    }
+
+    if (mismatches.length > 0) {
+      setMismatchedItems(mismatches);
+      setMismatchWarningDialogOpen(true);
+      return;
+    }
+
+    // No mismatches: proceed to submit
+    submitPurchaseInvoice();
+  };
+
+  // Choice A: Update Item Master with imported carton quantity and submit
+  const handleUpdateMasterAndSubmit = async () => {
+    setIsUpdatingMaster(true);
+    const toastId = toast.loading('Updating Item Master carton quantities...');
+    try {
+      for (const item of mismatchedItems) {
+        const res = await updateCartonQtyCall({
+          item_code: item.item_code,
+          new_carton_qty: item.current_packing
+        });
+        if (!res.message?.success) {
+          throw new Error(`Failed to update carton quantity for ${item.item_code}`);
+        }
+      }
+
+      await mutateItemList();
+      toast.success('Item Master updated successfully!', { id: toastId });
+      setMismatchWarningDialogOpen(false);
+      submitPurchaseInvoice();
+    } catch (err) {
+      toast.error(err.message || 'Error updating Item Master', { id: toastId });
+    } finally {
+      setIsUpdatingMaster(false);
+    }
+  };
+
+  // Choice B: Keep existing Item Master value and submit
+  const handleKeepMasterAndSubmit = () => {
+    setMismatchWarningDialogOpen(false);
+    submitPurchaseInvoice();
+  };
+
+  // Import items handler from Excel dialog
+  const handleImportItems = (importedItems) => {
+    if (!importedItems || importedItems.length === 0) return;
+
+    // Duplicate check: avoid adding items that are already in the items table
+    const existingCodes = new Set(items.map(i => i.item_code).filter(Boolean));
+    const nonDuplicates = importedItems.filter(i => !existingCodes.has(i.item_code));
+
+    if (nonDuplicates.length === 0) {
+      toast.error('All imported items are already added in the table.');
+      return;
+    }
+
+    // If table currently has only 1 empty row, replace it
+    if (items.length === 1 && !items[0].item_code) {
+      setItems(nonDuplicates);
+    } else {
+      setItems(prev => [...prev, ...nonDuplicates]);
+    }
+
+    toast.success(`Successfully imported ${nonDuplicates.length} items from Excel!`);
   };
 
   const addItem = () => {
@@ -228,7 +321,22 @@ export default function PurchaseForm() {
     <Box>
       <Box display="flex" justifyContent="space-between" mb={3}>
         <Typography variant="h5" fontWeight="bold">New Purchase</Typography>
-        <Button variant="contained" startIcon={<IconDeviceFloppy size={18} />} onClick={handleSave}>Save & Submit</Button>
+        <Box display="flex" gap={2}>
+          <Button
+            variant="outlined"
+            startIcon={<IconFileSpreadsheet size={18} />}
+            onClick={() => setImportExcelDialogOpen(true)}
+          >
+            Import from Excel
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<IconDeviceFloppy size={18} />}
+            onClick={handleSave}
+          >
+            Save & Submit
+          </Button>
+        </Box>
       </Box>
 
       <BlankCard><Box sx={{ p: 3, mb: 3 }}>
@@ -512,6 +620,92 @@ export default function PurchaseForm() {
           <Button variant="contained" onClick={handleCreateItem} disabled={isCreatingItem}>
             {isCreatingItem ? 'Saving...' : 'Save Item'}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Excel Import Dialog */}
+      <PurchaseExcelImportDialog
+        open={importExcelDialogOpen}
+        onClose={() => setImportExcelDialogOpen(false)}
+        onImportItems={handleImportItems}
+        existingPurchaseItems={items}
+        mutateItemList={mutateItemList}
+      />
+
+      {/* Pre-Submission Carton Mismatch Warning Dialog */}
+      <Dialog
+        open={mismatchWarningDialogOpen}
+        onClose={() => !isUpdatingMaster && setMismatchWarningDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <IconAlertTriangle color="#FA896B" size={24} />
+          <Typography variant="h6" fontWeight="bold">
+            Carton Quantity Mismatch Warning
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" mb={2}>
+            The following imported items have a carton quantity that differs from their current Item Master value.
+            <strong> The imported carton quantity will not update the Item Master automatically.</strong>
+          </Typography>
+
+          <Table size="small" sx={{ mb: 2 }}>
+            <TableHead>
+              <TableRow>
+                <TableCell>Item Code</TableCell>
+                <TableCell>Item Name</TableCell>
+                <TableCell align="right">Current Master (PCS/CTN)</TableCell>
+                <TableCell align="right">Purchase Document (PCS/CTN)</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {mismatchedItems.map((item) => (
+                <TableRow key={item.item_code}>
+                  <TableCell><Typography fontWeight="bold">{item.item_code}</Typography></TableCell>
+                  <TableCell>{item.item_name}</TableCell>
+                  <TableCell align="right">
+                    <Typography color="text.secondary">{item.master_packing || 'None'}</Typography>
+                  </TableCell>
+                  <TableCell align="right">
+                    <Typography color="error.main" fontWeight="bold">{item.current_packing}</Typography>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+
+          <Typography variant="body2" color="text.secondary">
+            Please choose how you would like to proceed:
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5, display: 'flex', justifyContent: 'space-between' }}>
+          <Button
+            onClick={() => setMismatchWarningDialogOpen(false)}
+            disabled={isUpdatingMaster}
+            color="inherit"
+          >
+            Cancel & Return to Form
+          </Button>
+          <Box display="flex" gap={1.5}>
+            <Button
+              variant="outlined"
+              color="inherit"
+              disabled={isUpdatingMaster}
+              onClick={handleKeepMasterAndSubmit}
+            >
+              Keep Existing Master & Submit
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              disabled={isUpdatingMaster}
+              onClick={handleUpdateMasterAndSubmit}
+            >
+              {isUpdatingMaster ? 'Updating Master...' : 'Update Item Master & Submit'}
+            </Button>
+          </Box>
         </DialogActions>
       </Dialog>
     </Box>
