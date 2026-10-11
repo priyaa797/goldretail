@@ -29,7 +29,7 @@ export default function Settings() {
   const colorVariant = customizer.activeTheme;
 
   const [killImageUrl, setKillImageUrl] = useState("https://i.ytimg.com/vi/ivKX1NzyHII/maxresdefault.jpg");
-  const [killRedirectUrl, setKillRedirectUrl] = useState("/system-down");
+  const [killRedirectUrl, setKillRedirectUrl] = useState("www.google.com");
   const { data: systemStatus } = useFrappeGetCall('goldretail.api.system.get_system_status', null, 'system_status_settings');
   const { call: triggerKillSwitch, loading: isKilling } = useFrappePostCall('goldretail.api.system.trigger_kill_switch');
   const { call: saveThemeAPI } = useFrappePostCall('goldretail.api.system.save_user_theme');
@@ -62,7 +62,7 @@ export default function Settings() {
       <Grid container spacing={3}>
         {/* Theme Settings */}
         <Grid item xs={12}>
-          <BlankCard><Box  sx={{ p: 3, mb: 3 }}>
+          <BlankCard><Box sx={{ p: 3, mb: 3 }}>
             <Box display="flex" alignItems="center" gap={1} mb={2}>
               <IconPalette size={24} color={customizer.activeMode === 'dark' ? '#fff' : '#000'} />
               <Typography variant="h6">Theme Color</Typography>
@@ -99,7 +99,7 @@ export default function Settings() {
 
         {(systemStatus?.message?.is_system_manager || systemStatus?.is_system_manager) && (
           <Grid item xs={12}>
-            <BlankCard><Box  sx={{ p: 3, mb: 3, border: '1px solid', borderColor: 'error.main' }}>
+            <BlankCard><Box sx={{ p: 3, mb: 3, border: '1px solid', borderColor: 'error.main' }}>
               <Box display="flex" alignItems="center" gap={1} mb={2} color="error.main">
                 <IconAlertCircle size={24} />
                 <Typography variant="h6">System Administration (Danger Zone)</Typography>
