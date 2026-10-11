@@ -2,6 +2,20 @@ import frappe
 import json
 
 @frappe.whitelist()
+def get_carton_packings():
+    uom_conversions = frappe.get_all(
+        "UOM Conversion Detail",
+        filters={
+            "parenttype": "Item",
+            "uom": ["in", ["Carton", "CTN", "ctn", "CARTON", "Ctn"]]
+        },
+        fields=["parent", "conversion_factor"],
+        ignore_permissions=True,
+        limit_page_length=50000
+    )
+    return {u.parent: u.conversion_factor for u in uom_conversions}
+
+@frappe.whitelist()
 def generate_pdf(item_codes, price_list="Wholesale", discount=0.0):
     if isinstance(item_codes, str):
         item_codes = json.loads(item_codes)
@@ -13,7 +27,7 @@ def generate_pdf(item_codes, price_list="Wholesale", discount=0.0):
         
     items = frappe.get_all("Item", 
                            filters={"item_code": ["in", item_codes]}, 
-                           fields=["item_code", "item_name", "description", "image"])
+                           fields=["item_code", "item_name", "description", "image", "stock_uom"])
                            
     prices = frappe.get_all("Item Price",
                             filters={"item_code": ["in", item_codes], "price_list": price_list},
@@ -27,6 +41,20 @@ def generate_pdf(item_codes, price_list="Wholesale", discount=0.0):
             price_map[p.item_code] = base_price * (1 + (discount / 100.0))
         else:
             price_map[p.item_code] = base_price
+
+    # Fetch Carton conversion factor for packaging detail
+    uom_conversions = frappe.get_all(
+        "UOM Conversion Detail",
+        filters={
+            "parenttype": "Item",
+            "uom": ["in", ["Carton", "CTN", "ctn", "CARTON", "Ctn"]],
+            "parent": ["in", item_codes]
+        },
+        fields=["parent", "conversion_factor"],
+        ignore_permissions=True,
+        limit_page_length=50000
+    )
+    carton_map = {u.parent: u.conversion_factor for u in uom_conversions}
     
     # Sort items by the order they were provided
     item_dict = {item.item_code: item for item in items}
@@ -42,6 +70,7 @@ def generate_pdf(item_codes, price_list="Wholesale", discount=0.0):
             font-family: Arial, sans-serif;
             margin: 0; 
             padding: 0;
+            background-color: #fff;
         }
         .page {
             width: 100%;
@@ -55,25 +84,28 @@ def generate_pdf(item_codes, price_list="Wholesale", discount=0.0):
             margin-bottom: 10px;
             font-size: 24px;
             font-weight: bold;
+            color: #000;
         }
         .grid {
             width: 100%;
             border-collapse: collapse;
+            table-layout: fixed;
         }
         .grid td {
             width: 33.33%;
-            border: 1px solid #999;
-            padding: 4px;
+            border: 1px solid #333;
+            padding: 4px 6px;
             vertical-align: top;
-            text-align: center;
+            text-align: left;
             height: 250px;
             box-sizing: border-box;
         }
         .item-image {
             width: 100%;
-            height: 180px;
+            height: 175px;
             object-fit: contain;
-            margin-bottom: 4px;
+            display: block;
+            margin: 0 auto 4px auto;
         }
         .title-line {
             font-size: 11px;
@@ -81,6 +113,10 @@ def generate_pdf(item_codes, price_list="Wholesale", discount=0.0):
             text-transform: uppercase;
             text-align: left;
             margin-top: 2px;
+            line-height: 1.2;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
         }
         .item-code {
             color: #ea580c; /* Orange */
@@ -95,8 +131,27 @@ def generate_pdf(item_codes, price_list="Wholesale", discount=0.0):
             text-transform: uppercase;
             text-align: left;
             margin-top: 2px;
-            max-height: 40px;
+            line-height: 1.2;
+            max-height: 26px;
             overflow: hidden;
+        }
+        .bottom-line {
+            font-size: 11px;
+            font-weight: bold;
+            text-align: left;
+            margin-top: 2px;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+        .ctn-detail {
+            color: #000;
+            font-weight: bold;
+        }
+        .price-str {
+            color: #e00000; /* Bold Red */
+            font-weight: bold;
+            font-size: 12px;
         }
     </style>
     </head>
@@ -127,10 +182,33 @@ def generate_pdf(item_codes, price_list="Wholesale", discount=0.0):
                     
                 desc = item.description or ""
                 # Strip HTML from description
-                desc = frappe.utils.strip_html_tags(desc)
+                desc = frappe.utils.strip_html_tags(desc).strip()
+                
+                # Format Carton detail
+                ctn_qty = carton_map.get(item.item_code)
+                ctn_str = ""
+                if ctn_qty:
+                    try:
+                        ctn_val = float(ctn_qty)
+                        ctn_qty_formatted = int(ctn_val) if ctn_val.is_integer() else ctn_val
+                    except (ValueError, TypeError):
+                        ctn_qty_formatted = ctn_qty
+                        
+                    stock_uom = (item.stock_uom or "").strip().upper()
+                    if stock_uom in ["SET", "SETS"]:
+                        uom_str = "SET"
+                    elif stock_uom in ["NOS", "PCS", "PIECE", "PIECES", "PC"] or not stock_uom:
+                        uom_str = "PCS"
+                    else:
+                        uom_str = stock_uom
+                        
+                    ctn_str = f'<span class="ctn-detail">{ctn_qty_formatted} {uom_str} IN CTN</span>'
                 
                 price = price_map.get(item.item_code)
-                price_str = f' <span style="color: red; font-size: 12px;">NP {int(price)}</span>' if price else ""
+                price_str = f'<span class="price-str">NP {int(round(price))}</span>' if price else ""
+                
+                spacer = "&nbsp;&nbsp;" if ctn_str and price_str else ""
+                bottom_line = f"{ctn_str}{spacer}{price_str}"
                 
                 html += f"""
                 <td>
@@ -138,10 +216,8 @@ def generate_pdf(item_codes, price_list="Wholesale", discount=0.0):
                     <div class="title-line">
                         <span class="item-code">{item.item_code}</span> <span class="item-name">{item.item_name}</span>
                     </div>
-                    <div class="item-desc">{desc}
-                    <br/>
-                    {price_str}
-                    </div>
+                    <div class="item-desc">{desc}</div>
+                    <div class="bottom-line">{bottom_line}</div>
                 </td>
                 """
                 

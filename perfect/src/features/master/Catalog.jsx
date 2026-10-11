@@ -4,7 +4,7 @@ import BlankCard from '../../components/shared/BlankCard';
 
 import CustomTextField from '../../components/forms/theme-elements/CustomTextField';
 
-import { useFrappeGetDocList, useFrappePostCall } from 'frappe-react-sdk';
+import { useFrappeGetDocList, useFrappePostCall, useFrappeGetCall } from 'frappe-react-sdk';
 import { IconFileText } from '@tabler/icons-react';
 import toast from 'react-hot-toast';
 
@@ -29,10 +29,13 @@ export default function Catalog() {
 
   // Fetch only active items based on category and sub_category filters
   const { data: items, isLoading } = useFrappeGetDocList('Item', {
-    fields: ['name', 'item_code', 'item_name', 'description', 'image', 'category', 'sub_category'],
+    fields: ['name', 'item_code', 'item_name', 'description', 'image', 'category', 'sub_category', 'stock_uom'],
     filters: queryFilters,
     limit: 1000
   });
+
+  const { data: cartonData } = useFrappeGetCall('goldretail.api.catalog.get_carton_packings');
+  const cartonMap = cartonData?.message || cartonData || {};
 
   const getStock = (item_code) => {
     if (!bins) return 0;
@@ -129,7 +132,7 @@ export default function Catalog() {
       </Box>
 
       {/* Filters Section */}
-      <BlankCard><Box  sx={{ p: 2, mb: 3 }}>
+      <BlankCard><Box sx={{ p: 2, mb: 3 }}>
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} sm={3}>
             <Autocomplete
@@ -185,7 +188,7 @@ export default function Catalog() {
       </Box></BlankCard>
 
       {itemsLoaded && (
-        <BlankCard><Box  sx={{ width: '100%', overflow: 'hidden' }}>
+        <BlankCard><Box sx={{ width: '100%', overflow: 'hidden' }}>
           <TableContainer sx={{ maxHeight: 'calc(100vh - 280px)' }}>
             <Table stickyHeader aria-label="catalog list table">
               <TableHead>
@@ -201,6 +204,7 @@ export default function Catalog() {
                   <TableCell>Image</TableCell>
                   <TableCell><Typography variant="subtitle2" fontWeight={600}>Item Code</Typography></TableCell>
                   <TableCell><Typography variant="subtitle2" fontWeight={600}>Item Name</Typography></TableCell>
+                  <TableCell><Typography variant="subtitle2" fontWeight={600}>CTN Detail</Typography></TableCell>
                   <TableCell><Typography variant="subtitle2" fontWeight={600}>Description</Typography></TableCell>
                   <TableCell><Typography variant="subtitle2" fontWeight={600}>Category</Typography></TableCell>
                   <TableCell><Typography variant="subtitle2" fontWeight={600}>Sub Category</Typography></TableCell>
@@ -209,6 +213,9 @@ export default function Catalog() {
               <TableBody>
                 {!isLoading && filteredItems?.map((item, index) => {
                   const isSelected = selectedItems.includes(item.item_code);
+                  const ctnQty = cartonMap[item.item_code];
+                  const uomLabel = ['Set', 'SET', 'set', 'Sets'].includes(item.stock_uom) ? 'SET' : 'PCS';
+                  const ctnDetailStr = ctnQty ? `${ctnQty} ${uomLabel} IN CTN` : '-';
                   return (
                     <TableRow
                       hover
@@ -237,10 +244,15 @@ export default function Catalog() {
                         </a>
                       </TableCell>
                       <TableCell>
-                        <Typography variant="subtitle2" fontWeight={700}>{item.item_code}</Typography>
+                        <Typography variant="subtitle2" fontWeight={700} color="primary.main">{item.item_code}</Typography>
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2">{item.item_name}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={600} color="text.primary">
+                          {ctnDetailStr}
+                        </Typography>
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 200 }} title={stripHtml(item.description)}>
@@ -258,7 +270,7 @@ export default function Catalog() {
                 })}
                 {(!filteredItems || filteredItems.length === 0) && !isLoading && (
                   <TableRow>
-                    <TableCell colSpan={8} align="center">
+                    <TableCell colSpan={9} align="center">
                       <Typography variant="subtitle2" py={3}>No active items found</Typography>
                     </TableCell>
                   </TableRow>
