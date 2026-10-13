@@ -40,15 +40,84 @@ export default function SalesDetails() {
             .no-print { display: none !important; }
             .print-only { display: block !important; }
             
-            /* Hide the app layout wrappers */
+            /* Page Settings: A5 Portrait (148mm x 210mm), 0mm margin (disables browser header/footer) */
+            @page {
+              size: A5 portrait;
+              margin: 0;
+            }
+            
+            /* Body margin/padding: 0mm, scaling 100% / actual size */
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+              width: 100% !important;
+              height: auto !important;
+              background: #fff !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              overflow: visible !important;
+              zoom: 1 !important;
+              transform: none !important;
+            }
+            
+            /* Hide the app layout wrappers and reset margins/padding */
             .mainwrapper > *:not(.page-wrapper) { display: none !important; }
             .page-wrapper > *:not(.MuiContainer-root) { display: none !important; }
-            .MuiContainer-root { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
-            .page-wrapper { margin-left: 0 !important; padding-bottom: 0 !important; }
+            .mainwrapper { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+            .page-wrapper { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+            .MuiContainer-root,
+            .MuiContainer-root > * {
+              max-width: 100% !important;
+              padding: 0 !important;
+              margin: 0 !important;
+              min-height: auto !important;
+              height: auto !important;
+              overflow: visible !important;
+            }
             
-            @page { size: A4; margin: 0; }
-            body { -webkit-print-color-adjust: exact; color-adjust: exact; background: white; }
-            .print-only { display: block !important; padding: 15mm; box-sizing: border-box; }
+            /* Print content container: 5mm side margins (left and right), 148mm max-width, prevent clipping */
+            .print-only {
+              display: block !important;
+              margin: 0 auto !important;
+              padding: 0 5mm !important;
+              box-sizing: border-box !important;
+              width: 100% !important;
+              max-width: 148mm !important;
+              overflow: visible !important;
+            }
+
+            /* Content overflow: prevent clipping across tables and rows */
+            .print-only * {
+              box-sizing: border-box !important;
+            }
+            .print-only table {
+              width: 100% !important;
+              max-width: 148mm !important;
+              table-layout: auto !important;
+              word-wrap: break-word !important;
+              overflow-wrap: break-word !important;
+              page-break-inside: auto;
+              break-inside: auto;
+            }
+            .print-only thead {
+              display: table-header-group !important;
+            }
+            .print-only tfoot {
+              display: table-footer-group !important;
+            }
+            .print-only tr {
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+            }
+
+            /* Reduced cell padding for compact printing */
+            .print-only th,
+            .print-only td {
+              padding: 2px 4px !important;
+            }
+            .print-only thead tr:first-child td {
+              padding: 0 !important;
+            }
           }
         `}
       </style>
