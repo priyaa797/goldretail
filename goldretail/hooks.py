@@ -251,7 +251,8 @@ after_migrate = "goldretail.customizations.sync.sync_all"
 
 doctype_js = {
     "Purchase Receipt": "customizations/purchase_receipt/purchase_receipt.js",
-    "Item": "public/js/item.js"
+    "Item": "customizations/item/item.js",
+    "Stock Reconciliation": "customizations/stock_reconciliation/stock_reconciliation.js"
 }
 
 doc_events = {

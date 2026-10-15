@@ -1,0 +1,9 @@
+[
+    {
+        "dt": "Stock Reconciliation Item",
+        "fieldname": "packing",
+        "label": "Packing / Pieces per Carton",
+        "fieldtype": "Float",
+        "insert_after": "item_name"
+    }
+]
