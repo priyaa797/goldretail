@@ -39,14 +39,23 @@ export default function SalesDetails() {
           @media print {
             .no-print { display: none !important; }
             .print-only { display: block !important; }
-            
-            /* Page Settings: A5 Portrait (148mm x 210mm), 0mm margin (disables browser header/footer) */
+
+            /* Hide toasts, snackbars, notifications */
+            .MuiSnackbar-root,
+            .MuiAlert-root,
+            [class*="toast"],
+            [class*="Toast"],
+            [class*="Toastify"],
+            [id*="toast"],
+            [role="alert"],
+            [role="status"] { display: none !important; }
+
+            /* A5 portrait, zero browser margins so no browser header/footer */
             @page {
               size: A5 portrait;
-              margin: 0;
+              margin: 5mm 5mm 5mm 5mm;
             }
-            
-            /* Body margin/padding: 0mm, scaling 100% / actual size */
+
             html, body {
               margin: 0 !important;
               padding: 0 !important;
@@ -56,67 +65,118 @@ export default function SalesDetails() {
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
               overflow: visible !important;
-              zoom: 1 !important;
-              transform: none !important;
-            }
-            
-            /* Hide the app layout wrappers and reset margins/padding */
-            .mainwrapper > *:not(.page-wrapper) { display: none !important; }
-            .page-wrapper > *:not(.MuiContainer-root) { display: none !important; }
-            .mainwrapper { margin: 0 !important; padding: 0 !important; width: 100% !important; }
-            .page-wrapper { margin: 0 !important; padding: 0 !important; width: 100% !important; }
-            .MuiContainer-root,
-            .MuiContainer-root > * {
-              max-width: 100% !important;
-              padding: 0 !important;
-              margin: 0 !important;
-              min-height: auto !important;
-              height: auto !important;
-              overflow: visible !important;
-            }
-            
-            /* Print content container: 5mm side margins (left and right), 148mm max-width, prevent clipping */
-            .print-only {
-              display: block !important;
-              margin: 0 auto !important;
-              padding: 0 5mm !important;
-              box-sizing: border-box !important;
-              width: 100% !important;
-              max-width: 148mm !important;
-              overflow: visible !important;
             }
 
-            /* Content overflow: prevent clipping across tables and rows */
+            /* Hide all direct body children except #root */
+            body > *:not(#root) { display: none !important; }
+
+            /* Ensure scripts, styles, noscript never render */
+            script,
+            style,
+            noscript {
+              display: none !important;
+            }
+
+            /* Reset only the known container chain — do NOT set display:block on body > * */
+            #root,
+            #root > *,
+            .mainwrapper,
+            .page-wrapper,
+            .MuiContainer-root {
+              position: static !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              min-height: 0 !important;
+              height: auto !important;
+              max-width: 100% !important;
+              width: 100% !important;
+              overflow: visible !important;
+              background: transparent !important;
+              box-shadow: none !important;
+              border: none !important;
+            }
+
+            /* Hide everything outside the main content path: loading bar, sidebar, header, etc. */
+            #root > *:not(.mainwrapper),
+            .mainwrapper > *:not(.page-wrapper),
+            .page-wrapper > *:not(.MuiContainer-root),
+            .MuiDrawer-root,
+            .MuiModal-root,
+            .MuiPopover-root,
+            .MuiBackdrop-root,
+            .MuiAppBar-root,
+            header,
+            nav,
+            aside {
+              display: none !important;
+            }
+
+            /* The print-only block itself */
+            .print-only {
+              display: block !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              box-sizing: border-box !important;
+              width: 100% !important;
+              overflow: visible !important;
+              font-size: 9px !important;
+              font-family: Arial, sans-serif !important;
+              color: #000 !important;
+            }
+
             .print-only * {
               box-sizing: border-box !important;
+              font-size: 9px !important;
             }
+
             .print-only table {
               width: 100% !important;
-              max-width: 148mm !important;
               table-layout: auto !important;
-              word-wrap: break-word !important;
-              overflow-wrap: break-word !important;
-              page-break-inside: auto;
-              break-inside: auto;
+              border-collapse: collapse !important;
+              page-break-inside: auto !important;
             }
+
             .print-only thead {
               display: table-header-group !important;
             }
             .print-only tfoot {
               display: table-footer-group !important;
             }
+
+            /* Compact rows — target: 30 items per A5 page */
+            .print-only th,
+            .print-only td {
+              padding: 1px 3px !important;
+              line-height: 1.2 !important;
+              vertical-align: top !important;
+            }
+
             .print-only tr {
               page-break-inside: avoid !important;
               break-inside: avoid !important;
             }
 
-            /* Reduced cell padding for compact printing */
-            .print-only th,
-            .print-only td {
-              padding: 2px 4px !important;
+            /* Print header info area */
+            .print-header {
+              font-size: 9px !important;
+              margin-bottom: 4px !important;
             }
-            .print-only thead tr:first-child td {
-              padding: 0 !important;
+            .print-header-title {
+              font-size: 11px !important;
+              font-weight: bold !important;
+              text-align: center !important;
+              text-decoration: underline !important;
+              margin-bottom: 3px !important;
+            }
+            .print-header-blessing {
+              font-size: 9px !important;
+              text-align: center !important;
+              margin-bottom: 2px !important;
+            }
+            .print-header-meta {
+              display: flex !important;
+              justify-content: space-between !important;
+              margin-bottom: 4px !important;
             }
           }
         `}
@@ -405,42 +465,31 @@ export default function SalesDetails() {
       </Box>
 
       {/* Print Only Section */}
-      <Box className="print-only" sx={{ color: '#000', fontFamily: 'sans-serif' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px', fontSize: '12px' }}>
+      <Box className="print-only">
+        {/* Header info rendered OUTSIDE the table so thead only repeats column headers */}
+        <div className="print-header">
+          <div className="print-header-blessing">||Shree Ganeshay Namah||</div>
+          <div className="print-header-title">Estimate/Packing List</div>
+          <div className="print-header-meta">
+            <div><strong>Customer:</strong> {doc.customer_name || doc.customer}</div>
+            <div style={{ textAlign: 'right' }}>
+              <div><strong>Invoice No:</strong> {doc.name}</div>
+              <div><strong>Date:</strong> {dayjs(doc.posting_date).format('DD MMM YYYY')}</div>
+              <div><strong>Total Weight:</strong> {(doc.items?.reduce((acc, curr) => acc + (Number(curr.total_weight) || Number(curr.carton_weight) || 0), 0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kgs.</div>
+            </div>
+          </div>
+        </div>
+
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '8px' }}>
           <thead>
             <tr>
-              <td colSpan={7} style={{ border: 'none', padding: 0 }}>
-                {/* <Box sx={{ textAlign: 'center', mb: 3, borderBottom: '2px solid #000', pb: 2 }}>
-                  <Typography variant="h4" sx={{ fontWeight: 'bold', fontFamily: 'serif', color: '#000' }}>Perfect Crockery</Typography>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, letterSpacing: 1 }}>PERFECT THE HOME CREATION</Typography>
-                  <Typography variant="body2" sx={{ fontSize: '11px', mb: 0.5 }}>Wholesalers : Crystal Crockery, Dinner Set, Kitchenware, Ceramicware, Bowls, Plates, Vases, Novelties & Gift Articles</Typography>
-                  <Typography variant="body2" sx={{ fontSize: '11px', mb: 0.5 }}>Shop No.1, 156, Sheriff Devji Street, Near Stay Inn Hotel (Chakla Street), Mumbai - 400 003. (INDIA).</Typography>
-                  <Typography variant="body2" sx={{ fontSize: '11px' }}>Tel.: 90826 07911 / 99304 15110 | E-mail : perfectcrockery2020@gmail.com</Typography>
-                </Box> */}
-                <Box sx={{ textAlign: 'center', pb: 2 }}>||Shree Ganeshay Namah||</Box>
-
-                <Typography variant="h6" align="center" sx={{ mb: 2, textDecoration: 'underline', fontWeight: 'bold' }}>Estimate/Packing List</Typography>
-
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-                  <Box>
-                    <Typography variant="body2"><strong>Customer:</strong> {doc.customer_name || doc.customer}</Typography>
-                  </Box>
-                  <Box sx={{ textAlign: 'right' }}>
-                    <Typography variant="body2"><strong>Invoice No:</strong> {doc.name}</Typography>
-                    <Typography variant="body2"><strong>Date:</strong> {dayjs(doc.posting_date).format('DD MMM YYYY')}</Typography>
-                    <Typography variant="body2"><strong>Total Weight:</strong> {(doc.items?.reduce((acc, curr) => acc + (Number(curr.total_weight) || Number(curr.carton_weight) || 0), 0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kgs.</Typography>
-                  </Box>
-                </Box>
-              </td>
-            </tr>
-            <tr>
-              <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'left' }}>S.No</th>
-              <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'left' }}>Items</th>
-              <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'right' }}>Ctn</th>
-              <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'right' }}>Qty</th>
-              <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'right' }}>Rate</th>
-              <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'right' }}>Disc. Rate</th>
-              <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'right' }}>Gross Total</th>
+              <th style={{ border: '1px solid #000', padding: '1px 3px', textAlign: 'left' }}>S.No</th>
+              <th style={{ border: '1px solid #000', padding: '1px 3px', textAlign: 'left' }}>Items</th>
+              <th style={{ border: '1px solid #000', padding: '1px 3px', textAlign: 'right' }}>Ctn</th>
+              <th style={{ border: '1px solid #000', padding: '1px 3px', textAlign: 'right' }}>Qty</th>
+              <th style={{ border: '1px solid #000', padding: '1px 3px', textAlign: 'right' }}>Rate</th>
+              <th style={{ border: '1px solid #000', padding: '1px 3px', textAlign: 'right' }}>Disc. Rate</th>
+              <th style={{ border: '1px solid #000', padding: '1px 3px', textAlign: 'right' }}>Gross Total</th>
             </tr>
           </thead>
           <tbody>
@@ -454,33 +503,35 @@ export default function SalesDetails() {
               const gstAmt = taxableAmount * (gst_percentage / 100);
               const finalNetAmount = taxableAmount + gstAmt;
 
+              const P = '1px 3px';
+              const B = '1px solid #000';
               return (
                 <tr key={index}>
-                  <td style={{ border: '1px solid #000', padding: '6px', verticalAlign: 'top' }}>{index + 1}</td>
-                  <td style={{ border: '1px solid #000', padding: '6px', verticalAlign: 'top' }}>
+                  <td style={{ border: B, padding: P, verticalAlign: 'top' }}>{index + 1}</td>
+                  <td style={{ border: B, padding: P, verticalAlign: 'top' }}>
                     {item.item_code} - {item.item_name}
                   </td>
-                  <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'right', verticalAlign: 'top' }}>{item.carton || '-'}</td>
-                  <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'right', verticalAlign: 'top' }}>{qty}</td>
-                  <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'right', verticalAlign: 'top' }}>₹{baseRate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                  <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'right', verticalAlign: 'top' }}>
+                  <td style={{ border: B, padding: P, textAlign: 'right', verticalAlign: 'top' }}>{item.carton || '-'}</td>
+                  <td style={{ border: B, padding: P, textAlign: 'right', verticalAlign: 'top' }}>{qty}</td>
+                  <td style={{ border: B, padding: P, textAlign: 'right', verticalAlign: 'top' }}>₹{baseRate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td style={{ border: B, padding: P, textAlign: 'right', verticalAlign: 'top' }}>
                     ₹{(Number(item.rate) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    {item.discount_percentage ? <div style={{ fontSize: '10px' }}>({item.discount_percentage}%)</div> : null}
+                    {item.discount_percentage ? <span> ({item.discount_percentage}%)</span> : null}
                   </td>
-                  <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'right', verticalAlign: 'top' }}>₹{(Number(item.amount) || taxableAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td style={{ border: B, padding: P, textAlign: 'right', verticalAlign: 'top' }}>₹{(Number(item.amount) || taxableAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 </tr>
               );
             })}
             <tr>
-              <td colSpan={2} style={{ border: '1px solid #000', padding: '6px', textAlign: 'right', fontWeight: 'bold' }}>Totals</td>
-              <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'right', fontWeight: 'bold' }}>
+              <td colSpan={2} style={{ border: '1px solid #000', padding: '1px 3px', textAlign: 'right', fontWeight: 'bold' }}>Totals</td>
+              <td style={{ border: '1px solid #000', padding: '1px 3px', textAlign: 'right', fontWeight: 'bold' }}>
                 {doc.items?.reduce((acc, curr) => acc + (Number(curr.carton) || 0), 0) || '-'}
               </td>
-              <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'right', fontWeight: 'bold' }}>
+              <td style={{ border: '1px solid #000', padding: '1px 3px', textAlign: 'right', fontWeight: 'bold' }}>
                 {doc.items?.reduce((acc, curr) => acc + (Number(curr.qty) || 0), 0) || 0}
               </td>
-              <td colSpan={2} style={{ border: '1px solid #000', padding: '6px' }}></td>
-              <td style={{ border: '1px solid #000', padding: '6px', textAlign: 'right', fontWeight: 'bold' }}>
+              <td colSpan={2} style={{ border: '1px solid #000', padding: '1px 3px' }}></td>
+              <td style={{ border: '1px solid #000', padding: '1px 3px', textAlign: 'right', fontWeight: 'bold' }}>
                 ₹{(doc.items?.reduce((acc, curr) => {
                   const qty = Number(curr.qty) || 0;
                   const baseRate = Number(curr.price_list_rate) || Number(curr.rate) || 0;

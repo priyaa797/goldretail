@@ -43,13 +43,12 @@
         } catch(e) {}
       })();
     </script>
+    <script>
+      window.csrf_token = '{{ frappe.session.csrf_token }}';
+    </script>
   </head>
   <body>
     <div id="root"></div>
-		<script>
-			window.csrf_token = '{{ frappe.session.csrf_token }}';
-			// TODO: load boot data here (context file is created in `www` directory)
-		</script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
