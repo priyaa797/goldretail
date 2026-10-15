@@ -138,6 +138,7 @@ export default function StockBalance() {
                 <TableCell align="right"><Typography variant="subtitle2" fontWeight={600}>In Qty</Typography></TableCell>
                 <TableCell align="right"><Typography variant="subtitle2" fontWeight={600}>Out Qty</Typography></TableCell>
                 <TableCell align="right"><Typography variant="subtitle2" fontWeight={600}>Balance Qty</Typography></TableCell>
+                <TableCell align="right"><Typography variant="subtitle2" fontWeight={600}>Balance Carton</Typography></TableCell>
                 <TableCell align="right"><Typography variant="subtitle2" fontWeight={600}>Value (₹)</Typography></TableCell>
               </TableRow>
             </TableHead>
@@ -166,12 +167,13 @@ export default function StockBalance() {
                   <TableCell align="right"><Typography variant="subtitle2" color="textSecondary">{row.in_qty}</Typography></TableCell>
                   <TableCell align="right"><Typography variant="subtitle2" color="textSecondary">{row.out_qty}</Typography></TableCell>
                   <TableCell align="right"><Typography variant="subtitle2" color="textSecondary">{row.actual_qty}</Typography></TableCell>
+                  <TableCell align="right"><Typography variant="subtitle2" color="textSecondary">{row.balance_carton != null ? row.balance_carton : '—'}</Typography></TableCell>
                   <TableCell align="right"><Typography variant="subtitle2" color="textSecondary">{row.stock_value}</Typography></TableCell>
                 </TableRow>
               ))}
               {rows.length === 0 && !isLoading && (
                 <TableRow>
-                  <TableCell colSpan={9} align="center">
+                  <TableCell colSpan={10} align="center">
                     <Typography variant="subtitle2" py={3}>No stock balance data available</Typography>
                   </TableCell>
                 </TableRow>

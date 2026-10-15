@@ -34,7 +34,21 @@ def get_stock_balance(warehouse=None, item=None, show_zero_balance=0):
     )
     
     item_map = {i.name: i for i in items}
-    
+
+    # Bulk-fetch Carton UOM conversion factors for all items in the report
+    uom_conversions = frappe.get_all(
+        "UOM Conversion Detail",
+        filters={
+            "parenttype": "Item",
+            "uom": ["in", ["Carton", "CTN", "ctn", "CARTON", "Ctn"]],
+            "parent": ["in", item_codes],
+        },
+        fields=["parent", "conversion_factor"],
+        ignore_permissions=True,
+        limit_page_length=50000,
+    )
+    carton_factor_map = {u.parent: u.conversion_factor for u in uom_conversions}
+
     # Fetch in/out quantities from Stock Ledger Entry
     # SLE logs every transaction. actual_qty > 0 is incoming, actual_qty < 0 is outgoing.
     sle_query = """
@@ -60,7 +74,13 @@ def get_stock_balance(warehouse=None, item=None, show_zero_balance=0):
         key = f"{b.item_code}-{b.warehouse}"
         itm = item_map.get(b.item_code, {})
         sle = sle_map.get(key, {})
-        
+
+        carton_factor = carton_factor_map.get(b.item_code)
+        if carton_factor and float(carton_factor) > 0:
+            balance_carton = round(float(b.actual_qty) / float(carton_factor), 2)
+        else:
+            balance_carton = None
+
         results.append({
             "id": key,
             "item_code": b.item_code,
@@ -71,9 +91,10 @@ def get_stock_balance(warehouse=None, item=None, show_zero_balance=0):
             "actual_qty": b.actual_qty,
             "stock_value": b.stock_value,
             "in_qty": sle.get("in_qty") or 0,
-            "out_qty": sle.get("out_qty") or 0
+            "out_qty": sle.get("out_qty") or 0,
+            "balance_carton": balance_carton,
         })
-        
+
     return results
 
 @frappe.whitelist()
