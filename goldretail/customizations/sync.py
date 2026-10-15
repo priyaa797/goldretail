@@ -4,39 +4,6 @@ import frappe
 from frappe.custom.doctype.custom_field.custom_field import create_custom_field
 from frappe.custom.doctype.property_setter.property_setter import make_property_setter
 
-def create_doctypes():
-    doctypes_to_create = [
-        ("Item Category", "category_name"),
-        ("Item Sub Category", "sub_category_name"),
-        ("Item Type", "type_name")
-    ]
-    for dt, fieldname in doctypes_to_create:
-        if not frappe.db.exists("DocType", dt):
-            doc = frappe.get_doc({
-                "doctype": "DocType",
-                "name": dt,
-                "module": "Gold Retail",
-                "custom": 0,
-                "naming_rule": "Set by user",
-                "autoname": f"field:{fieldname}",
-                "fields": [
-                    {
-                        "fieldname": fieldname,
-                        "label": dt + " Name",
-                        "fieldtype": "Data",
-                        "reqd": 1,
-                        "unique": 1
-                    }
-                ],
-                "permissions": [{"role": "System Manager", "read": 1, "write": 1, "create": 1, "delete": 1},
-                                {"role": "Item Manager", "read": 1, "write": 1, "create": 1}]
-            })
-            doc.insert(ignore_permissions=True)
-            print(f"Created DocType: {dt}")
-        else:
-            print(f"DocType {dt} already exists.")
-    frappe.db.commit()
-
 def sync_all():
     print("Syncing Customizations for Gold Retail...")
     app_path = frappe.get_app_path("goldretail", "customizations")
