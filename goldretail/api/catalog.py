@@ -75,6 +75,7 @@ def generate_pdf(item_codes, price_list="Wholesale", discount=0.0):
         .page {
             width: 100%;
             page-break-after: always;
+            page-break-inside: avoid;
         }
         .page:last-child {
             page-break-after: auto;
@@ -90,22 +91,27 @@ def generate_pdf(item_codes, price_list="Wholesale", discount=0.0):
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
+            margin: 0;
         }
+        /* 4 rows × 60mm = 240mm + ~14mm header = 254mm < 287mm (A4 - 5mm margins) */
         .grid td {
             width: 33.33%;
             border: 1px solid #333;
-            padding: 4px 6px;
+            padding: 2mm 2mm;
             vertical-align: top;
             text-align: left;
-            height: 250px;
+            height: 60mm;
             box-sizing: border-box;
+        }
+        .grid tr {
+            page-break-inside: avoid;
         }
         .item-image {
             width: 100%;
-            height: 175px;
+            height: 40mm;
             object-fit: contain;
             display: block;
-            margin: 0 auto 4px auto;
+            margin: 0 auto 1mm auto;
         }
         .title-line {
             font-size: 11px;
@@ -158,9 +164,9 @@ def generate_pdf(item_codes, price_list="Wholesale", discount=0.0):
     <body>
     """
     
-    ITEMS_PER_PAGE = 9
+    ITEMS_PER_PAGE = 12
     ITEMS_PER_ROW = 3
-    
+
     for page_idx in range(0, len(sorted_items), ITEMS_PER_PAGE):
         page_items = sorted_items[page_idx:page_idx + ITEMS_PER_PAGE]
         
