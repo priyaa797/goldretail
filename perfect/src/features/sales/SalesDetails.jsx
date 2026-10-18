@@ -159,24 +159,72 @@ export default function SalesDetails() {
             /* Print header info area */
             .print-header {
               font-size: 9px !important;
-              margin-bottom: 4px !important;
+              margin-bottom: 6px !important;
+              width: 100% !important;
             }
-            .print-header-title {
-              font-size: 11px !important;
-              font-weight: bold !important;
-              text-align: center !important;
-              text-decoration: underline !important;
-              margin-bottom: 3px !important;
-            }
-            .print-header-blessing {
-              font-size: 9px !important;
-              text-align: center !important;
-              margin-bottom: 2px !important;
-            }
-            .print-header-meta {
+            .print-header-row {
               display: flex !important;
               justify-content: space-between !important;
+              align-items: center !important;
+              width: 100% !important;
+            }
+            .print-header-row-1 {
               margin-bottom: 4px !important;
+            }
+            .print-header-row-1 > div {
+              flex: 1 !important;
+            }
+            .print-header-left {
+              text-align: left !important;
+              white-space: nowrap !important;
+            }
+            .print-header-center {
+              text-align: center !important;
+              font-weight: bold !important;
+              white-space: nowrap !important;
+            }
+            .print-header-right {
+              text-align: right !important;
+              white-space: nowrap !important;
+            }
+            .print-header-row-2 {
+              align-items: baseline !important;
+            }
+            .print-header-customer {
+              text-align: left !important;
+            }
+            .print-header-weight {
+              text-align: right !important;
+              white-space: nowrap !important;
+            }
+
+            /* Print footer & Terms */
+            .print-thank-you {
+              margin-top: 6px !important;
+              padding-top: 3px !important;
+              border-top: 1px solid #000 !important;
+              text-align: center !important;
+            }
+            .print-terms {
+              margin-top: 6px !important;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+            }
+            .print-terms-title {
+              font-size: 8.5px !important;
+              font-weight: bold !important;
+              margin-bottom: 2px !important;
+            }
+            .print-terms-list {
+              margin: 0 !important;
+              padding-left: 14px !important;
+              font-size: 8px !important;
+              line-height: 1.25 !important;
+            }
+            .print-terms-list li {
+              font-size: 8px !important;
+              line-height: 1.25 !important;
+              margin-bottom: 1px !important;
             }
           }
         `}
@@ -468,14 +516,23 @@ export default function SalesDetails() {
       <Box className="print-only">
         {/* Header info rendered OUTSIDE the table so thead only repeats column headers */}
         <div className="print-header">
-          <div className="print-header-blessing">||Shree Ganeshay Namah||</div>
-          <div className="print-header-title">Estimate/Packing List</div>
-          <div className="print-header-meta">
-            <div><strong>Customer:</strong> {doc.customer_name || doc.customer}</div>
-            <div style={{ textAlign: 'right' }}>
-              <div><strong>Invoice No:</strong> {doc.name}</div>
-              <div><strong>Date:</strong> {dayjs(doc.posting_date).format('DD MMM YYYY')}</div>
-              <div><strong>Total Weight:</strong> {(doc.items?.reduce((acc, curr) => acc + (Number(curr.total_weight) || Number(curr.carton_weight) || 0), 0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kgs.</div>
+          <div className="print-header-row print-header-row-1">
+            <div className="print-header-left">
+              <strong>Invoice No:</strong> {doc.name}
+            </div>
+            <div className="print-header-center">
+              ||Shree Ganeshay Namah||
+            </div>
+            <div className="print-header-right">
+              <strong>Date:</strong> {dayjs(doc.posting_date).format('DD MMM YYYY')}
+            </div>
+          </div>
+          <div className="print-header-row print-header-row-2">
+            <div className="print-header-customer">
+              <strong>Customer:</strong> {doc.customer_name || doc.customer}
+            </div>
+            <div className="print-header-weight">
+              <strong>Total Weight:</strong> {(doc.items?.reduce((acc, curr) => acc + (Number(curr.total_weight) || Number(curr.carton_weight) || 0), 0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kgs.
             </div>
           </div>
         </div>
@@ -649,9 +706,20 @@ export default function SalesDetails() {
 
 
 
-        <Box sx={{ mt: 4, pt: 2, borderTop: '1px solid #000', textAlign: 'center' }}>
+        <Box className="print-thank-you" sx={{ mt: 4, pt: 2, borderTop: '1px solid #000', textAlign: 'center' }}>
           <Typography variant="body2" sx={{ fontStyle: 'italic' }}>Thank you for your business!</Typography>
         </Box>
+
+        <div className="print-terms">
+          <div className="print-terms-title">Terms &amp; Conditions</div>
+          <ol className="print-terms-list">
+            <li>This is an estimate only. The rates and stock available on the date of dispatch will be applicable.</li>
+            <li>We are not responsible for breakage during transportation.</li>
+            <li>No replacements will be provided.</li>
+            <li>No guarantee is provided.</li>
+            <li>Please instruct your transporter to handle the goods with care.</li>
+          </ol>
+        </div>
 
       </Box>
     </>
