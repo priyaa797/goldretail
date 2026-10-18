@@ -169,7 +169,14 @@ export default function SalesDetails() {
               width: 100% !important;
             }
             .print-header-row-1 {
-              margin-bottom: 4px !important;
+              margin-bottom: 2px !important;
+            }
+            .print-header-title {
+              font-size: 11px !important;
+              font-weight: bold !important;
+              text-align: center !important;
+              text-decoration: underline !important;
+              margin-bottom: 3px !important;
             }
             .print-header-row-1 > div {
               flex: 1 !important;
@@ -527,6 +534,7 @@ export default function SalesDetails() {
               <strong>Date:</strong> {dayjs(doc.posting_date).format('DD MMM YYYY')}
             </div>
           </div>
+          <div className="print-header-title">Estimate/Packing List</div>
           <div className="print-header-row print-header-row-2">
             <div className="print-header-customer">
               <strong>Customer:</strong> {doc.customer_name || doc.customer}
