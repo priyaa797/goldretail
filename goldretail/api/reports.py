@@ -1,19 +1,40 @@
 import frappe
 
 @frappe.whitelist()
-def get_stock_balance(warehouse=None, item=None, show_zero_balance=0):
+def get_stock_balance(warehouse=None, item=None, show_zero_balance=0, category=None, sub_category=None, type=None, item_type=None):
     """
     Returns a list of items with their available qty, in qty, out qty, item name, and image.
     Aggregates data from Bin and Stock Ledger Entry.
     """
-    
+    selected_type = type or item_type
+
+    # Filter by Item fields (category, sub_category, type)
+    item_filters = []
+    if category:
+        item_filters.append(["category", "=", category])
+    if sub_category:
+        item_filters.append(["sub_category", "=", sub_category])
+    if selected_type:
+        item_filters.append(["type", "=", selected_type])
+
+    filtered_item_codes = None
+    if item_filters:
+        matching_items = frappe.get_all("Item", filters=item_filters, pluck="name")
+        if not matching_items:
+            return []
+        filtered_item_codes = matching_items
+
     filters = []
     if not frappe.utils.cint(show_zero_balance):
         filters.append(["actual_qty", "!=", 0])
     if warehouse:
         filters.append(["warehouse", "=", warehouse])
     if item:
+        if filtered_item_codes is not None and item not in filtered_item_codes:
+            return []
         filters.append(["item_code", "=", item])
+    elif filtered_item_codes is not None:
+        filters.append(["item_code", "in", filtered_item_codes])
         
     # Get standard bin data
     bins = frappe.get_all(
@@ -25,11 +46,11 @@ def get_stock_balance(warehouse=None, item=None, show_zero_balance=0):
     if not bins:
         return []
         
-    # Fetch Item details (name, image)
+    # Fetch Item details (name, image, category, sub_category, type)
     item_codes = [b.item_code for b in bins]
     items = frappe.get_all(
         "Item",
-        fields=["name", "item_name", "description", "image"],
+        fields=["name", "item_name", "description", "image", "category", "sub_category", "type"],
         filters=[["name", "in", item_codes]]
     )
     
@@ -87,6 +108,9 @@ def get_stock_balance(warehouse=None, item=None, show_zero_balance=0):
             "item_name": itm.get("item_name") or b.item_code,
             "description": itm.get("description") or "",
             "image": itm.get("image") or "",
+            "category": itm.get("category") or "",
+            "sub_category": itm.get("sub_category") or "",
+            "type": itm.get("type") or "",
             "warehouse": b.warehouse,
             "actual_qty": b.actual_qty,
             "stock_value": b.stock_value,
