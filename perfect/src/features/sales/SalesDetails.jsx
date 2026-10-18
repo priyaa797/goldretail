@@ -714,17 +714,16 @@ export default function SalesDetails() {
 
 
 
-        <Box className="print-thank-you" sx={{ mt: 4, pt: 2, borderTop: '1px solid #000', textAlign: 'center' }}>
+        {/* <Box className="print-thank-you" sx={{ mt: 4, pt: 2, borderTop: '1px solid #000', textAlign: 'center' }}>
           <Typography variant="body2" sx={{ fontStyle: 'italic' }}>Thank you for your business!</Typography>
-        </Box>
+        </Box> */}
 
         <div className="print-terms">
           <div className="print-terms-title">Terms &amp; Conditions</div>
           <ol className="print-terms-list">
             <li>This is an estimate only. The rates and stock available on the date of dispatch will be applicable.</li>
             <li>We are not responsible for breakage during transportation.</li>
-            <li>No replacements will be provided.</li>
-            <li>No guarantee is provided.</li>
+            <li>No replacements or the guarantee will be provided.</li>
             <li>Please instruct your transporter to handle the goods with care.</li>
           </ol>
         </div>
