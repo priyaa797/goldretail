@@ -156,6 +156,13 @@ export default function SalesDetails() {
               break-inside: avoid !important;
             }
 
+            /* Main print items table font size (11px) */
+            .print-only table.print-main-table th,
+            .print-only table.print-main-table td,
+            .print-only table.print-main-table * {
+              font-size: 10px !important;
+            }
+
             /* Print header info area */
             .print-header {
               font-size: 9px !important;
@@ -545,7 +552,7 @@ export default function SalesDetails() {
           </div>
         </div>
 
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '8px' }}>
+        <table className="print-main-table" style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '8px' }}>
           <thead>
             <tr>
               <th style={{ border: '1px solid #000', padding: '1px 3px', textAlign: 'left' }}>S.No</th>
