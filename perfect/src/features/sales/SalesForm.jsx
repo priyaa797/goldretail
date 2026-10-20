@@ -56,8 +56,8 @@ export default function SalesForm() {
       setPriceList(initialPl);
 
       // Populate transportation and packaging charges
-      const transportCharge = existingDoc.taxes?.find(t => 
-        t.charge_type === 'Actual' && 
+      const transportCharge = existingDoc.taxes?.find(t =>
+        t.charge_type === 'Actual' &&
         (t.account_head?.includes('Transportation') || t.description?.toLowerCase().includes('transport'))
       );
       const initialTransport = transportCharge ? String(transportCharge.tax_amount || '') : '';
@@ -65,8 +65,8 @@ export default function SalesForm() {
         setTransportationCharges(initialTransport);
       }
 
-      const packagingCharge = existingDoc.taxes?.find(t => 
-        t.charge_type === 'Actual' && 
+      const packagingCharge = existingDoc.taxes?.find(t =>
+        t.charge_type === 'Actual' &&
         (t.account_head?.includes('Packaging') || t.description?.toLowerCase().includes('packag'))
       );
       const initialPackaging = packagingCharge ? String(packagingCharge.tax_amount || '') : '';
@@ -265,7 +265,8 @@ export default function SalesForm() {
           description: i.description,
           carton: Number(i.carton) || 0,
           packing: Number(i.packing) || 0,
-          total_weight: Number(i.total_weight) || 0
+          total_weight: Number(i.total_weight) || 0,
+          warehouse: `NEW - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`
         };
       }),
       taxes_and_charges: existingDoc?.taxes_and_charges || `Output GST In-state - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`,
@@ -306,8 +307,8 @@ export default function SalesForm() {
         success: (res) => {
           const newDocName = res.message?.name || res.name;
           navigate(`/sales/${newDocName}`);
-          return isEditMode 
-            ? `Sales ${id} amended to ${newDocName} successfully!` 
+          return isEditMode
+            ? `Sales ${id} amended to ${newDocName} successfully!`
             : `Sales ${newDocName} submitted successfully!`;
         },
         error: (err) => {
@@ -374,9 +375,9 @@ export default function SalesForm() {
     <Box sx={{ width: '100%', maxWidth: '100%', minWidth: 0 }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Box display="flex" alignItems="center" gap={2}>
-          <Button 
-            startIcon={<IconArrowLeft size={18} />} 
-            onClick={() => navigate(isEditMode ? `/sales/${id}` : '/sales')} 
+          <Button
+            startIcon={<IconArrowLeft size={18} />}
+            onClick={() => navigate(isEditMode ? `/sales/${id}` : '/sales')}
             color="inherit"
           >
             Back
@@ -385,10 +386,10 @@ export default function SalesForm() {
             {isEditMode ? `Update Sale - ${id}` : 'New Sale'}
           </Typography>
         </Box>
-        <Button 
-          variant="contained" 
-          startIcon={<IconDeviceFloppy size={18} />} 
-          onClick={handleSave} 
+        <Button
+          variant="contained"
+          startIcon={<IconDeviceFloppy size={18} />}
+          onClick={handleSave}
           disabled={isSubmitting}
         >
           {isEditMode ? 'Update & Submit' : 'Save & Submit'}
@@ -420,11 +421,11 @@ export default function SalesForm() {
                 }
               }}
               renderInput={(params) => (
-                <CustomTextField 
-                  {...params} 
-                  fullWidth 
-                  label="Customer" 
-                  placeholder="Select Customer..." 
+                <CustomTextField
+                  {...params}
+                  fullWidth
+                  label="Customer"
+                  placeholder="Select Customer..."
                 />
               )}
             />
@@ -773,48 +774,48 @@ export default function SalesForm() {
                   </Box>
 
                   <Box sx={{ width: { xs: '100%', md: '300px' } }}>
-                <Box display="flex" justifyContent="space-between" mb={1}>
-                  <Typography variant="body2" color="text.secondary">Total</Typography>
-                  <Typography variant="body2">₹{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
-                </Box>
-                {total_discount > 0 && (
-                  <Box display="flex" justifyContent="space-between" mb={1}>
-                    <Typography variant="body2" color="text.secondary">Total Discount</Typography>
-                    <Typography variant="body2" color="error.main">-₹{total_discount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
-                  </Box>
-                )}
-                <Box display="flex" justifyContent="space-between" mb={1}>
-                  <Typography variant="body2" color="text.secondary">Taxes</Typography>
-                  <Typography variant="body2">₹{total_taxes.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
-                </Box>
-                {transportChargeVal > 0 && (
-                  <Box display="flex" justifyContent="space-between" mb={1}>
-                    <Typography variant="body2" color="text.secondary">Transportation Charges</Typography>
-                    <Typography variant="body2">₹{transportChargeVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
-                  </Box>
-                )}
-                {packingChargeVal > 0 && (
-                  <Box display="flex" justifyContent="space-between" mb={1}>
-                    <Typography variant="body2" color="text.secondary">Packaging Charges</Typography>
-                    <Typography variant="body2">₹{packingChargeVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
-                  </Box>
-                )}
-                <Box display="flex" justifyContent="space-between" mb={1} pt={1} sx={{ borderTop: '1px solid', borderColor: 'divider' }}>
-                  <Typography variant="subtitle1" fontWeight="bold">Grand Total</Typography>
-                  <Typography variant="subtitle1" fontWeight="bold">₹{grand_total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
-                </Box>
-                {rounding_adjustment !== 0 && (
-                  <Box display="flex" justifyContent="space-between" mb={1}>
-                    <Typography variant="body2" color="text.secondary">Rounding Adjustment</Typography>
-                    <Typography variant="body2">₹{rounding_adjustment.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
-                  </Box>
-                )}
-                {rounded_total > 0 && rounded_total !== grand_total && (
-                  <Box display="flex" justifyContent="space-between" mb={1} pt={1} sx={{ borderTop: '1px solid', borderColor: 'divider' }}>
-                    <Typography variant="subtitle1" fontWeight="bold">Rounded Total</Typography>
-                    <Typography variant="subtitle1" fontWeight="bold">₹{rounded_total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
-                  </Box>
-                )}
+                    <Box display="flex" justifyContent="space-between" mb={1}>
+                      <Typography variant="body2" color="text.secondary">Total</Typography>
+                      <Typography variant="body2">₹{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
+                    </Box>
+                    {total_discount > 0 && (
+                      <Box display="flex" justifyContent="space-between" mb={1}>
+                        <Typography variant="body2" color="text.secondary">Total Discount</Typography>
+                        <Typography variant="body2" color="error.main">-₹{total_discount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
+                      </Box>
+                    )}
+                    <Box display="flex" justifyContent="space-between" mb={1}>
+                      <Typography variant="body2" color="text.secondary">Taxes</Typography>
+                      <Typography variant="body2">₹{total_taxes.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
+                    </Box>
+                    {transportChargeVal > 0 && (
+                      <Box display="flex" justifyContent="space-between" mb={1}>
+                        <Typography variant="body2" color="text.secondary">Transportation Charges</Typography>
+                        <Typography variant="body2">₹{transportChargeVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
+                      </Box>
+                    )}
+                    {packingChargeVal > 0 && (
+                      <Box display="flex" justifyContent="space-between" mb={1}>
+                        <Typography variant="body2" color="text.secondary">Packaging Charges</Typography>
+                        <Typography variant="body2">₹{packingChargeVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
+                      </Box>
+                    )}
+                    <Box display="flex" justifyContent="space-between" mb={1} pt={1} sx={{ borderTop: '1px solid', borderColor: 'divider' }}>
+                      <Typography variant="subtitle1" fontWeight="bold">Grand Total</Typography>
+                      <Typography variant="subtitle1" fontWeight="bold">₹{grand_total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
+                    </Box>
+                    {rounding_adjustment !== 0 && (
+                      <Box display="flex" justifyContent="space-between" mb={1}>
+                        <Typography variant="body2" color="text.secondary">Rounding Adjustment</Typography>
+                        <Typography variant="body2">₹{rounding_adjustment.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
+                      </Box>
+                    )}
+                    {rounded_total > 0 && rounded_total !== grand_total && (
+                      <Box display="flex" justifyContent="space-between" mb={1} pt={1} sx={{ borderTop: '1px solid', borderColor: 'divider' }}>
+                        <Typography variant="subtitle1" fontWeight="bold">Rounded Total</Typography>
+                        <Typography variant="subtitle1" fontWeight="bold">₹{rounded_total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
+                      </Box>
+                    )}
                   </Box>
                 </Box>
               </BlankCard>
