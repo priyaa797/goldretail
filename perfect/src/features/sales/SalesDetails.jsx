@@ -183,6 +183,7 @@ export default function SalesDetails() {
               font-weight: bold !important;
               text-align: center !important;
               text-decoration: underline !important;
+              text-transform: uppercase !important;
               margin-bottom: 3px !important;
             }
             .print-header-row-1 > div {
@@ -195,6 +196,7 @@ export default function SalesDetails() {
             .print-header-center {
               text-align: center !important;
               font-weight: bold !important;
+              text-transform: uppercase !important;
               white-space: nowrap !important;
             }
             .print-header-right {
@@ -202,7 +204,7 @@ export default function SalesDetails() {
               white-space: nowrap !important;
             }
             .print-header-row-2 {
-              align-items: baseline !important;
+              align-items: flex-start !important;
             }
             .print-header-customer {
               text-align: left !important;
@@ -233,10 +235,12 @@ export default function SalesDetails() {
               margin: 0 !important;
               padding-left: 14px !important;
               font-size: 8px !important;
+              font-weight: bold !important;
               line-height: 1.25 !important;
             }
             .print-terms-list li {
               font-size: 8px !important;
+              font-weight: bold !important;
               line-height: 1.25 !important;
               margin-bottom: 1px !important;
             }
@@ -549,31 +553,28 @@ export default function SalesDetails() {
               <strong>Invoice No:</strong> {doc.name}
             </div>
             <div className="print-header-center">
-              ||Shree Ganeshay Namah||
+              ||SHREE GANESHAY NAMAH||
             </div>
             <div className="print-header-right">
               <strong>Date:</strong> {dayjs(doc.posting_date).format('DD MMM YYYY')}
             </div>
           </div>
-          <div className="print-header-title">Estimate/Packing List</div>
+          <div className="print-header-title">ESTIMATE/PACKING LIST</div>
           <div className="print-header-row print-header-row-2">
             <div className="print-header-customer">
               <strong>Customer:</strong> {doc.customer_name || doc.customer}
             </div>
             <div className="print-header-weight">
-              <strong>Total Weight:</strong> {(doc.items?.reduce((acc, curr) => acc + (Number(curr.total_weight) || Number(curr.carton_weight) || 0), 0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kgs.
+              <div>
+                <strong>Total Weight:</strong> {(doc.items?.reduce((acc, curr) => acc + (Number(curr.total_weight) || Number(curr.carton_weight) || 0), 0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kgs.
+              </div>
+              {doc.vehicle_no && (
+                <div>
+                  <strong>Vehicle No:</strong> {doc.vehicle_no}
+                </div>
+              )}
             </div>
           </div>
-          {(doc.driver_name || doc.vehicle_no) && (
-            <div className="print-header-row print-header-row-3" style={{ marginTop: '2px' }}>
-              <div style={{ textAlign: 'left' }}>
-                {doc.driver_name && <span><strong>Driver:</strong> {doc.driver_name}</span>}
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                {doc.vehicle_no && <span><strong>Vehicle No:</strong> {doc.vehicle_no}</span>}
-              </div>
-            </div>
-          )}
         </div>
 
         <table className="print-main-table" style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '8px' }}>
@@ -750,8 +751,8 @@ export default function SalesDetails() {
         </Box> */}
 
         <div className="print-terms">
-          <div className="print-terms-title">Terms &amp; Conditions</div>
-          <ol className="print-terms-list">
+          <div className="print-terms-title"><strong>Terms &amp; Conditions</strong></div>
+          <ol className="print-terms-list" style={{ fontWeight: 'bold' }}>
             <li>This is an estimate only. The rates and stock available on the date of dispatch will be applicable.</li>
             <li>We are not responsible for breakage during transportation.</li>
             <li>No replacements or the guarantee will be provided.</li>
