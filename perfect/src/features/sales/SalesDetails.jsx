@@ -362,6 +362,88 @@ export default function SalesDetails() {
                     </TableRow>
                   );
                 })}
+
+                {/* Static Totals Row */}
+                {(() => {
+                  let totalCarton = 0;
+                  let totalQty = 0;
+                  let totalWeight = 0;
+                  let totalGross = 0;
+                  let totalDiscountAmt = 0;
+                  let totalGstAmt = 0;
+                  let totalNetAmt = 0;
+
+                  doc.items?.forEach(item => {
+                    const gst_percentage = (Number(item.cgst_rate) || 0) + (Number(item.sgst_rate) || 0) + (Number(item.igst_rate) || 0);
+                    const qty = Number(item.qty) || 0;
+                    const baseRate = Number(item.price_list_rate) || Number(item.rate) || 0;
+                    const grossAmount = qty * baseRate;
+                    const discountAmt = (baseRate - (Number(item.rate) || 0)) * qty;
+                    const taxableAmount = grossAmount - discountAmt;
+                    const gstAmt = taxableAmount * (gst_percentage / 100);
+                    const finalNetAmount = taxableAmount + gstAmt;
+
+                    totalCarton += Number(item.carton) || 0;
+                    totalQty += qty;
+                    totalWeight += Number(item.carton_weight) || Number(item.total_weight) || 0;
+                    totalGross += grossAmount;
+                    totalDiscountAmt += discountAmt;
+                    totalGstAmt += gstAmt;
+                    totalNetAmt += finalNetAmount;
+                  });
+
+                  return (
+                    <TableRow sx={{ bgcolor: 'action.hover', borderTop: '2px solid', borderColor: 'divider' }}>
+                      <TableCell sx={{ position: 'sticky', left: 0, bgcolor: 'background.paper', zIndex: 1 }}>
+                        <Typography variant="subtitle2" fontWeight="bold">Total</Typography>
+                      </TableCell>
+                      <TableCell sx={{ position: 'sticky', left: 60, bgcolor: 'background.paper', zIndex: 1, borderRight: '1px solid', borderColor: 'divider' }}>
+                        <Typography variant="caption" color="text.secondary">({doc.items?.length || 0} {(doc.items?.length || 0) === 1 ? 'item' : 'items'})</Typography>
+                      </TableCell>
+                      <TableCell></TableCell>
+                      <TableCell></TableCell>
+                      <TableCell>
+                        <Typography variant="subtitle2" fontWeight="bold">
+                          {totalCarton > 0 ? totalCarton : '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell></TableCell>
+                      <TableCell>
+                        <Typography variant="subtitle2" fontWeight="bold">
+                          {totalQty > 0 ? totalQty.toLocaleString() : '0'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="subtitle2" fontWeight="bold">
+                          {totalWeight > 0 ? totalWeight.toFixed(2) : '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell></TableCell>
+                      <TableCell>
+                        <Typography variant="subtitle2" fontWeight="bold">
+                          ₹{totalGross.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </Typography>
+                      </TableCell>
+                      <TableCell></TableCell>
+                      <TableCell>
+                        <Typography variant="subtitle2" fontWeight="bold">
+                          ₹{totalDiscountAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </Typography>
+                      </TableCell>
+                      <TableCell></TableCell>
+                      <TableCell>
+                        <Typography variant="subtitle2" fontWeight="bold">
+                          ₹{totalGstAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="subtitle2" fontWeight="bold">
+                          ₹{totalNetAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })()}
               </TableBody>
             </Table>
           </TableContainer>

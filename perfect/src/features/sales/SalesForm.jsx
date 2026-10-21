@@ -675,6 +675,74 @@ export default function SalesForm() {
                   </TableRow>
                 );
               })}
+
+              {/* Dynamic Totals Row */}
+              {(() => {
+                let totalCarton = 0;
+                let totalQty = 0;
+                let totalWeight = 0;
+                let totalGross = 0;
+                let totalDiscount = 0;
+
+                items.forEach(item => {
+                  const ctn = Number(item.carton) || 0;
+                  const qty = Number(item.qty) || 0;
+                  const rate = Number(item.user_rate) || Number(item.rate) || 0;
+                  const gross = qty * rate;
+                  const discPct = Number(item.discount) || 0;
+                  const discAmt = gross > 0 ? gross * (discPct / 100) : 0;
+                  const wt = Number(item.total_weight) || (qty * (Number(item.weight_per_unit) || 0));
+
+                  totalCarton += ctn;
+                  totalQty += qty;
+                  totalWeight += wt;
+                  totalGross += gross;
+                  totalDiscount += discAmt;
+                });
+
+                return (
+                  <TableRow sx={{ bgcolor: 'action.hover', borderTop: '2px solid', borderColor: 'divider' }}>
+                    <TableCell sx={{ position: 'sticky', left: 0, bgcolor: 'background.paper', zIndex: 1 }}>
+                      <Typography variant="subtitle2" fontWeight="bold">Total</Typography>
+                    </TableCell>
+                    <TableCell sx={{ position: 'sticky', left: 60, bgcolor: 'background.paper', zIndex: 1, borderRight: '1px solid', borderColor: 'divider' }}>
+                      <Typography variant="caption" color="text.secondary">({items.length} {items.length === 1 ? 'item' : 'items'})</Typography>
+                    </TableCell>
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
+                    <TableCell>
+                      <Typography variant="subtitle2" fontWeight="bold">
+                        {totalCarton > 0 ? totalCarton : '-'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell></TableCell>
+                    <TableCell>
+                      <Typography variant="subtitle2" fontWeight="bold">
+                        {totalQty > 0 ? totalQty.toLocaleString() : '0'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="subtitle2" fontWeight="bold">
+                        {totalWeight > 0 ? totalWeight.toFixed(2) : '-'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
+                    <TableCell>
+                      <Typography variant="subtitle2" fontWeight="bold">
+                        ₹{totalDiscount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="subtitle2" fontWeight="bold">
+                        ₹{totalGross.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </Typography>
+                    </TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
+                );
+              })()}
             </TableBody>
           </Table>
         </Box>
