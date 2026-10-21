@@ -440,7 +440,7 @@ export default function SalesDetails() {
             <Box mb={4}>
               <BlankCard>
                 <Box display="flex" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap={3} sx={{ p: 3 }}>
-                  <Box sx={{ width: { xs: '100%', md: '300px' } }}>
+                  <Box sx={{ width: { xs: '100%', md: '280px' } }}>
                     <Typography variant="subtitle1" fontWeight="bold" mb={2}>Additional Charges</Typography>
                     <Box display="flex" flexDirection="column" gap={1}>
                       {actualCharges.length > 0 ? actualCharges.map((charge, i) => {
@@ -454,6 +454,20 @@ export default function SalesDetails() {
                       }) : (
                         <Typography variant="body2" color="text.secondary">No additional charges.</Typography>
                       )}
+                    </Box>
+                  </Box>
+
+                  <Box sx={{ width: { xs: '100%', md: '280px' } }}>
+                    <Typography variant="subtitle1" fontWeight="bold" mb={2}>Transportation Details</Typography>
+                    <Box display="flex" flexDirection="column" gap={1}>
+                      <Box display="flex" justifyContent="space-between">
+                        <Typography variant="body2" color="text.secondary">Driver Name:</Typography>
+                        <Typography variant="body2" fontWeight="500">{doc.driver_name || '-'}</Typography>
+                      </Box>
+                      <Box display="flex" justifyContent="space-between">
+                        <Typography variant="body2" color="text.secondary">Vehicle No:</Typography>
+                        <Typography variant="body2" fontWeight="500">{doc.vehicle_no || '-'}</Typography>
+                      </Box>
                     </Box>
                   </Box>
 
@@ -550,6 +564,16 @@ export default function SalesDetails() {
               <strong>Total Weight:</strong> {(doc.items?.reduce((acc, curr) => acc + (Number(curr.total_weight) || Number(curr.carton_weight) || 0), 0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kgs.
             </div>
           </div>
+          {(doc.driver_name || doc.vehicle_no) && (
+            <div className="print-header-row print-header-row-3" style={{ marginTop: '2px' }}>
+              <div style={{ textAlign: 'left' }}>
+                {doc.driver_name && <span><strong>Driver:</strong> {doc.driver_name}</span>}
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                {doc.vehicle_no && <span><strong>Vehicle No:</strong> {doc.vehicle_no}</span>}
+              </div>
+            </div>
+          )}
         </div>
 
         <table className="print-main-table" style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '8px' }}>

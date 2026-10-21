@@ -24,6 +24,8 @@ export default function SalesForm() {
   const [items, setItems] = useState([{ item_code: '', item_name: '', description: '', qty: '', rate: 0, user_rate: '', carton: '', packing: '', total_weight: '', discount: '' }]);
   const [transportationCharges, setTransportationCharges] = useState('');
   const [packagingCharges, setPackagingCharges] = useState('');
+  const [driverName, setDriverName] = useState('');
+  const [vehicleNo, setVehicleNo] = useState('');
   const [docLoaded, setDocLoaded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const initialSnapshot = useRef(null);
@@ -54,6 +56,11 @@ export default function SalesForm() {
       const initialPl = existingDoc.selling_price_list || 'Wholesale';
       setCustomer(initialCust);
       setPriceList(initialPl);
+
+      const initialDriver = existingDoc.driver_name || '';
+      const initialVehicle = existingDoc.vehicle_no || '';
+      setDriverName(initialDriver);
+      setVehicleNo(initialVehicle);
 
       // Populate transportation and packaging charges
       const transportCharge = existingDoc.taxes?.find(t =>
@@ -105,6 +112,8 @@ export default function SalesForm() {
       initialSnapshot.current = {
         customer: initialCust,
         priceList: initialPl,
+        driverName: (initialDriver || '').trim(),
+        vehicleNo: (initialVehicle || '').trim(),
         transportationCharges: Number(initialTransport) || 0,
         packagingCharges: Number(initialPackaging) || 0,
         items: loadedItems.map(i => ({
@@ -128,6 +137,8 @@ export default function SalesForm() {
 
     if ((customer || '').trim() !== (initialSnapshot.current.customer || '').trim()) return true;
     if ((priceList || 'Wholesale') !== (initialSnapshot.current.priceList || 'Wholesale')) return true;
+    if ((driverName || '').trim() !== (initialSnapshot.current.driverName || '').trim()) return true;
+    if ((vehicleNo || '').trim() !== (initialSnapshot.current.vehicleNo || '').trim()) return true;
     if ((Number(transportationCharges) || 0) !== initialSnapshot.current.transportationCharges) return true;
     if ((Number(packagingCharges) || 0) !== initialSnapshot.current.packagingCharges) return true;
 
@@ -246,6 +257,8 @@ export default function SalesForm() {
       doctype: 'Sales Invoice',
       customer,
       selling_price_list: priceList,
+      driver_name: (driverName || '').trim(),
+      vehicle_no: (vehicleNo || '').trim(),
       ...(isEditMode ? {
         amended_from: id,
         posting_date: existingDoc?.posting_date,
@@ -745,7 +758,7 @@ export default function SalesForm() {
             <Box mb={4}>
               <BlankCard>
                 <Box display="flex" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap={3} sx={{ p: 3 }}>
-                  <Box sx={{ width: { xs: '100%', md: '300px' } }}>
+                  <Box sx={{ width: { xs: '100%', md: '280px' } }}>
                     <Typography variant="subtitle1" fontWeight="bold" mb={2}>Additional Charges</Typography>
                     <Box display="flex" flexDirection="column" gap={2}>
                       <CustomTextField
@@ -769,6 +782,26 @@ export default function SalesForm() {
                             setPackagingCharges(val);
                           }
                         }}
+                      />
+                    </Box>
+                  </Box>
+
+                  <Box sx={{ width: { xs: '100%', md: '280px' } }}>
+                    <Typography variant="subtitle1" fontWeight="bold" mb={2}>Transportation Details</Typography>
+                    <Box display="flex" flexDirection="column" gap={2}>
+                      <CustomTextField
+                        fullWidth
+                        label="Driver Name"
+                        placeholder="Enter driver name"
+                        value={driverName}
+                        onChange={e => setDriverName(e.target.value)}
+                      />
+                      <CustomTextField
+                        fullWidth
+                        label="Vehicle No"
+                        placeholder="e.g. KA49S1616"
+                        value={vehicleNo}
+                        onChange={e => setVehicleNo(e.target.value.toUpperCase())}
                       />
                     </Box>
                   </Box>
