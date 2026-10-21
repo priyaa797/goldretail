@@ -4,7 +4,7 @@ import BlankCard from '../../components/shared/BlankCard';
 
 import CustomTextField from '../../components/forms/theme-elements/CustomTextField';
 
-import { useFrappeGetDocList, useFrappePostCall, useFrappeGetDoc, useFrappeUpdateDoc } from 'frappe-react-sdk';
+import { useFrappeGetDocList, useFrappePostCall, useFrappeGetDoc, useFrappeUpdateDoc, useFrappeGetCall } from 'frappe-react-sdk';
 import { IconDeviceFloppy, IconPhoto, IconX, IconArrowLeft } from '@tabler/icons-react';
 import toast from 'react-hot-toast';
 import { useParams, useNavigate } from 'react-router';
@@ -22,7 +22,8 @@ export default function ItemForm() {
     retail_price: '',
     weight_per_unit: '',
     weight_uom: 'Nos',
-    nos_per_carton: ''
+    nos_per_carton: '',
+    gst_hsn_code: '999999'
   });
 
   const [imageFile, setImageFile] = useState(null);
@@ -57,7 +58,8 @@ export default function ItemForm() {
         type: existingItem.type || '',
         weight_per_unit: existingItem.weight_per_unit || '',
         weight_uom: existingItem.weight_uom || 'Nos',
-        nos_per_carton: existingItem.uoms?.find(u => u.uom === 'Carton')?.conversion_factor || ''
+        nos_per_carton: existingItem.uoms?.find(u => u.uom === 'Carton')?.conversion_factor || '',
+        gst_hsn_code: existingItem.gst_hsn_code || ''
       }));
       if (existingItem.image) {
         setImagePreview(existingItem.image);
@@ -69,6 +71,33 @@ export default function ItemForm() {
   const { data: categories } = useFrappeGetDocList('Item Category', { fields: ['name'], limit: 1000 });
   const { data: subCategories } = useFrappeGetDocList('Item Sub Category', { fields: ['name'], limit: 1000 });
   const { data: itemTypes } = useFrappeGetDocList('Item Type', { fields: ['name'], limit: 1000 });
+
+  const [hsnSearchTxt, setHsnSearchTxt] = useState('');
+  const [debouncedHsnTxt, setDebouncedHsnTxt] = useState('');
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedHsnTxt(hsnSearchTxt);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [hsnSearchTxt]);
+
+  const { data: hsnSearchData } = useFrappeGetCall(
+    'frappe.desk.search.search_link',
+    {
+      doctype: 'GST HSN Code',
+      txt: debouncedHsnTxt || '',
+      page_length: 50
+    }
+  );
+
+  const hsnOptions = React.useMemo(() => {
+    const list = hsnSearchData?.message || [];
+    if (formData.gst_hsn_code && !list.some(opt => (opt.value || opt) === formData.gst_hsn_code)) {
+      return [{ value: formData.gst_hsn_code, description: '' }, ...list];
+    }
+    return list;
+  }, [hsnSearchData, formData.gst_hsn_code]);
 
   const { data: itemPrices } = useFrappeGetDocList('Item Price', {
     fields: ['price_list', 'price_list_rate'],
@@ -122,7 +151,8 @@ export default function ItemForm() {
       retail_price: '',
       weight_per_unit: '',
       weight_uom: 'Nos',
-      nos_per_carton: ''
+      nos_per_carton: '',
+      gst_hsn_code: '999999'
     });
     setImageFile(null);
     setImagePreview('');
@@ -181,6 +211,7 @@ export default function ItemForm() {
         weight_per_unit: parseFloat(formData.weight_per_unit) || 0,
         weight_uom: formData.weight_uom || 'Nos',
         stock_uom: 'Nos',
+        gst_hsn_code: formData.gst_hsn_code || '999999',
       };
 
       if (formData.nos_per_carton) {
@@ -236,7 +267,6 @@ export default function ItemForm() {
           doctype: 'Item',
           item_code: formData.item_code,
           ...docParams,
-          gst_hsn_code: '999999',
           is_stock_item: 1,
         };
         const res = await insertDoc({ doc });
@@ -415,15 +445,67 @@ export default function ItemForm() {
           </Box></BlankCard>
 
           <BlankCard><Box  sx={{ p: 3 }}>
-            <Typography variant="h6" mb={2}>Fixed Settings</Typography>
-            <Box display="flex" flexDirection="column" gap={1.5}>
-              <Box display="flex" justifyContent="space-between">
+            <Typography variant="h6" mb={2}>Settings</Typography>
+            <Box display="flex" flexDirection="column" gap={2}>
+              <Box display="flex" justifyContent="space-between" alignItems="center">
                 <Typography variant="body2" color="text.secondary">Is Stock Item:</Typography>
                 <Typography variant="body2" fontWeight="bold" color="success.main">Yes</Typography>
               </Box>
-              <Box display="flex" justifyContent="space-between">
-                <Typography variant="body2" color="text.secondary">GST HSN Code:</Typography>
-                <Typography variant="body2" fontWeight="bold">999999</Typography>
+              <Box>
+                <Autocomplete
+                  freeSolo
+                  options={hsnOptions}
+                  getOptionLabel={(option) => {
+                    if (typeof option === 'string') return option;
+                    return option?.value || '';
+                  }}
+                  isOptionEqualToValue={(option, value) => {
+                    const optVal = typeof option === 'string' ? option : option?.value;
+                    const val = typeof value === 'string' ? value : value?.value;
+                    return optVal === val;
+                  }}
+                  value={formData.gst_hsn_code || ''}
+                  onInputChange={(event, newInputValue, reason) => {
+                    if (reason === 'input') {
+                      setHsnSearchTxt(newInputValue);
+                      handleInputChange('gst_hsn_code', newInputValue);
+                    } else if (reason === 'clear') {
+                      setHsnSearchTxt('');
+                      handleInputChange('gst_hsn_code', '');
+                    }
+                  }}
+                  onChange={(event, newValue) => {
+                    const val = typeof newValue === 'string' ? newValue : newValue?.value || '';
+                    handleInputChange('gst_hsn_code', val);
+                  }}
+                  renderOption={(props, option) => {
+                    const { key, ...restProps } = props;
+                    const optVal = typeof option === 'string' ? option : option.value;
+                    const optDesc = typeof option === 'string' ? '' : option.description;
+                    return (
+                      <li key={key} {...restProps} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '6px 12px' }}>
+                        <Typography variant="body2" fontWeight="600" sx={{ lineHeight: 1.2 }}>
+                          {optVal}
+                        </Typography>
+                        {optDesc && (
+                          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.25 }}>
+                            {optDesc}
+                          </Typography>
+                        )}
+                      </li>
+                    );
+                  }}
+                  renderInput={(params) => (
+                    <CustomTextField
+                      {...params}
+                      fullWidth
+                      size="small"
+                      label="GST HSN Code"
+                      placeholder="Search HSN code..."
+                      helperText="Frappe search_link for GST HSN Code"
+                    />
+                  )}
+                />
               </Box>
             </Box>
           </Box></BlankCard>
