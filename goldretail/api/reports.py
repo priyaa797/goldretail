@@ -170,3 +170,190 @@ def get_item_ledger(item_code, warehouse=None, page=1, page_size=20):
         "page": page,
         "page_size": page_size
     }
+
+
+@frappe.whitelist()
+def export_stock_balance(file_format="excel", warehouse=None, item=None, show_zero_balance=0, category=None, sub_category=None, type=None, item_type=None):
+    from frappe.utils import now_datetime, strip_html
+    from frappe.utils.xlsxutils import make_xlsx
+    from frappe.utils.pdf import get_pdf
+
+    data = get_stock_balance(
+        warehouse=warehouse,
+        item=item,
+        show_zero_balance=show_zero_balance,
+        category=category,
+        sub_category=sub_category,
+        type=type,
+        item_type=item_type
+    )
+
+    date_str = now_datetime().strftime("%d%b%Y").lower()
+    filename = f"stock balance {date_str}"
+
+    headers = [
+        "Item code",
+        "Item name",
+        "Description",
+        "Warehouse",
+        "In qty",
+        "Out qty",
+        "Balance qty",
+        "Balance carton"
+    ]
+
+    export_rows = []
+    for r in data:
+        desc = strip_html(r.get("description") or "").strip()
+        balance_carton = r.get("balance_carton")
+        carton_val = float(balance_carton) if balance_carton is not None else ""
+        export_rows.append([
+            r.get("item_code") or "",
+            r.get("item_name") or "",
+            desc,
+            r.get("warehouse") or "",
+            float(r.get("in_qty") or 0),
+            float(r.get("out_qty") or 0),
+            float(r.get("actual_qty") or 0),
+            carton_val
+        ])
+
+    file_format = (file_format or "excel").lower()
+
+    if file_format in ["excel", "xlsx"]:
+        xlsx_data = [headers] + export_rows
+        xlsx_file = make_xlsx(xlsx_data, "Stock Balance")
+        frappe.response['filename'] = f"{filename}.xlsx"
+        frappe.response['filecontent'] = xlsx_file.getvalue()
+        frappe.response['type'] = 'binary'
+    elif file_format == "pdf":
+        html = generate_stock_balance_pdf_html(headers, export_rows, warehouse, category, sub_category, type or item_type, date_str)
+        frappe.response['filename'] = f"{filename}.pdf"
+        frappe.response['filecontent'] = get_pdf(html, {"orientation": "Landscape", "page-size": "A4"})
+        frappe.response['type'] = 'binary'
+    else:
+        frappe.throw("Invalid format. Use 'excel' or 'pdf'.")
+
+
+def generate_stock_balance_pdf_html(headers, rows, warehouse=None, category=None, sub_category=None, item_type=None, date_str=""):
+    filters_desc = []
+    if warehouse:
+        filters_desc.append(f"Warehouse: <b>{warehouse}</b>")
+    if category:
+        filters_desc.append(f"Category: <b>{category}</b>")
+    if sub_category:
+        filters_desc.append(f"Sub Category: <b>{sub_category}</b>")
+    if item_type:
+        filters_desc.append(f"Type: <b>{item_type}</b>")
+    filter_text = " | ".join(filters_desc) if filters_desc else "All Warehouses & Items"
+
+    table_rows = []
+    for r in rows:
+        carton_display = f"{r[7]:.2f}" if isinstance(r[7], (int, float)) else (str(r[7]) if r[7] else "-")
+        table_rows.append(f"""
+            <tr>
+                <td style="border: 1px solid #ddd; padding: 4px 6px; font-size: 10px; font-weight: bold;">{r[0]}</td>
+                <td style="border: 1px solid #ddd; padding: 4px 6px; font-size: 10px;">{r[1]}</td>
+                <td style="border: 1px solid #ddd; padding: 4px 6px; font-size: 9px; color: #555;">{r[2]}</td>
+                <td style="border: 1px solid #ddd; padding: 4px 6px; font-size: 10px;">{r[3]}</td>
+                <td style="border: 1px solid #ddd; padding: 4px 6px; font-size: 10px; text-align: right;">{r[4]:,.2f}</td>
+                <td style="border: 1px solid #ddd; padding: 4px 6px; font-size: 10px; text-align: right;">{r[5]:,.2f}</td>
+                <td style="border: 1px solid #ddd; padding: 4px 6px; font-size: 10px; text-align: right; font-weight: bold;">{r[6]:,.2f}</td>
+                <td style="border: 1px solid #ddd; padding: 4px 6px; font-size: 10px; text-align: right;">{carton_display}</td>
+            </tr>
+        """)
+
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body {{
+                font-family: Arial, sans-serif;
+                margin: 10px;
+                color: #333;
+            }}
+            .title {{
+                font-size: 16px;
+                font-weight: bold;
+                text-transform: uppercase;
+                margin: 0;
+            }}
+            .filters {{
+                font-size: 10px;
+                color: #555;
+                margin-top: 3px;
+            }}
+            .date {{
+                font-size: 10px;
+                font-weight: bold;
+                text-align: right;
+            }}
+            table {{
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 8px;
+            }}
+            th {{
+                background-color: #f1f3f5;
+                border: 1px solid #bbb;
+                padding: 5px 6px;
+                font-size: 9.5px;
+                font-weight: bold;
+                text-transform: uppercase;
+                text-align: left;
+            }}
+            th.right {{
+                text-align: right;
+            }}
+            tr:nth-child(even) {{
+                background-color: #f9f9f9;
+            }}
+            .footer {{
+                margin-top: 10px;
+                font-size: 9px;
+                color: #777;
+                text-align: right;
+            }}
+        </style>
+    </head>
+    <body>
+        <table style="width: 100%; border: none; margin-bottom: 6px;">
+            <tr>
+                <td style="border: none; padding: 0;">
+                    <h2 class="title">Stock Balance Report</h2>
+                    <div class="filters">{filter_text}</div>
+                </td>
+                <td style="border: none; padding: 0; text-align: right; vertical-align: top;">
+                    <div class="date">Date: {date_str}</div>
+                    <div style="font-size: 10px; color: #666;">Total Items: {len(rows)}</div>
+                </td>
+            </tr>
+        </table>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 12%;">Item Code</th>
+                    <th style="width: 20%;">Item Name</th>
+                    <th style="width: 26%;">Description</th>
+                    <th style="width: 14%;">Warehouse</th>
+                    <th class="right" style="width: 7%;">In Qty</th>
+                    <th class="right" style="width: 7%;">Out Qty</th>
+                    <th class="right" style="width: 7%;">Balance Qty</th>
+                    <th class="right" style="width: 7%;">Balance Carton</th>
+                </tr>
+            </thead>
+            <tbody>
+                {''.join(table_rows)}
+            </tbody>
+        </table>
+
+        <div class="footer">
+            Generated on {date_str} | Stock Balance Report
+        </div>
+    </body>
+    </html>
+    """
+    return html

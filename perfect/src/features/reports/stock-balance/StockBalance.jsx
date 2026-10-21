@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Box, Typography, Grid, MenuItem, Avatar, FormControlLabel, Checkbox, Table, TableBody, TableCell, TableHead, TableRow, TableContainer, Dialog, DialogTitle, DialogContent, IconButton, CircularProgress, TablePagination, Autocomplete, createFilterOptions } from '@mui/material';
+import { Box, Button, Typography, Grid, MenuItem, Avatar, FormControlLabel, Checkbox, Table, TableBody, TableCell, TableHead, TableRow, TableContainer, Dialog, DialogTitle, DialogContent, IconButton, CircularProgress, TablePagination, Autocomplete, createFilterOptions } from '@mui/material';
 import BlankCard from '../../../components/shared/BlankCard';
 
 import CustomTextField from '../../../components/forms/theme-elements/CustomTextField';
 
 import { useFrappeGetDocList, useFrappeGetCall } from 'frappe-react-sdk';
-import { IconX } from '@tabler/icons-react';
+import { IconX, IconDownload, IconFileSpreadsheet, IconFileTypePdf } from '@tabler/icons-react';
 import dayjs from 'dayjs';
+import toast from 'react-hot-toast';
 
 const itemFilterOptions = createFilterOptions({
   stringify: (option) => `${option.item_code || ''} ${option.item_name || ''}`,
@@ -24,6 +25,11 @@ export default function StockBalance() {
   // Pagination for main Stock Balance table
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50);
+
+  // Export report states
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportingFormat, setExportingFormat] = useState('');
 
   const [ledgerModalOpen, setLedgerModalOpen] = useState(false);
   const [selectedLedgerItem, setSelectedLedgerItem] = useState(null);
@@ -154,10 +160,61 @@ export default function StockBalance() {
     setPage(0);
   }, [warehouse, item, category, subCategory, itemType, showZeroBalance]);
 
+  const handleExport = async (format) => {
+    setExporting(true);
+    setExportingFormat(format);
+    const toastId = toast.loading(`Preparing ${format.toUpperCase()} export...`);
+    try {
+      const params = new URLSearchParams({
+        file_format: format,
+        ...(warehouse ? { warehouse } : {}),
+        ...(item ? { item } : {}),
+        ...(category ? { category } : {}),
+        ...(subCategory ? { sub_category: subCategory } : {}),
+        ...(itemType ? { type: itemType } : {}),
+        show_zero_balance: showZeroBalance ? 1 : 0
+      });
+
+      const url = `/api/method/goldretail.api.reports.export_stock_balance?${params.toString()}`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Export failed (${response.statusText})`);
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      const dateStr = dayjs().format('DDMMMYYYY').toLowerCase();
+      const ext = format === 'excel' ? 'xlsx' : 'pdf';
+      a.download = `stock balance ${dateStr}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+
+      toast.success(`Downloaded stock balance ${dateStr}.${ext}`, { id: toastId });
+      setExportDialogOpen(false);
+    } catch (err) {
+      toast.error('Failed to export: ' + (err.message || 'Unknown error'), { id: toastId });
+    } finally {
+      setExporting(false);
+      setExportingFormat('');
+    }
+  };
+
   return (
     <Box>
-      <Box display="flex" justifyContent="space-between" mb={4}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
         <Typography variant="h4" fontWeight="800">Stock Balance</Typography>
+        <Button
+          variant="contained"
+          startIcon={<IconDownload size={18} />}
+          onClick={() => setExportDialogOpen(true)}
+          disabled={isLoading || rows.length === 0}
+        >
+          Export
+        </Button>
       </Box>
 
       <BlankCard><Box sx={{ p: 3, mb: 4 }}>
@@ -416,6 +473,86 @@ export default function StockBalance() {
             rowsPerPage={20}
             rowsPerPageOptions={[20]}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Export Format Dialog */}
+      <Dialog
+        open={exportDialogOpen}
+        onClose={() => !exporting && setExportDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6" fontWeight="bold">Export Stock Balance</Typography>
+          <IconButton size="small" onClick={() => setExportDialogOpen(false)} disabled={exporting}>
+            <IconX size={18} />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" color="text.secondary" mb={3}>
+            Select the file format to export the filtered report ({rows.length} items):
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={6}>
+              <Button
+                variant="outlined"
+                fullWidth
+                disabled={exporting}
+                onClick={() => handleExport('excel')}
+                sx={{
+                  p: 2.5,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 1.5,
+                  borderWidth: '2px',
+                  borderColor: 'success.main',
+                  color: 'success.main',
+                  '&:hover': {
+                    borderWidth: '2px',
+                    borderColor: 'success.dark',
+                    bgcolor: 'success.lighter'
+                  }
+                }}
+              >
+                <IconFileSpreadsheet size={36} />
+                <Typography variant="subtitle1" fontWeight="bold">Excel</Typography>
+              </Button>
+            </Grid>
+            <Grid item xs={6}>
+              <Button
+                variant="outlined"
+                fullWidth
+                disabled={exporting}
+                onClick={() => handleExport('pdf')}
+                sx={{
+                  p: 2.5,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 1.5,
+                  borderWidth: '2px',
+                  borderColor: 'error.main',
+                  color: 'error.main',
+                  '&:hover': {
+                    borderWidth: '2px',
+                    borderColor: 'error.dark',
+                    bgcolor: 'error.lighter'
+                  }
+                }}
+              >
+                <IconFileTypePdf size={36} />
+                <Typography variant="subtitle1" fontWeight="bold">PDF</Typography>
+              </Button>
+            </Grid>
+          </Grid>
+          {exporting && (
+            <Box display="flex" justifyContent="center" alignItems="center" gap={1.5} mt={3}>
+              <CircularProgress size={20} />
+              <Typography variant="body2" color="text.secondary">Generating {exportingFormat.toUpperCase()} report...</Typography>
+            </Box>
+          )}
         </DialogContent>
       </Dialog>
     </Box>
