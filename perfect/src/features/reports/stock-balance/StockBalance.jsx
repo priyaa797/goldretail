@@ -28,10 +28,15 @@ export default function StockBalance() {
   const [ledgerPage, setLedgerPage] = useState(0); // MUI TablePagination is 0-indexed
   const [ledgerTotal, setLedgerTotal] = useState(0);
 
-  const { data: warehouses } = useFrappeGetDocList('Warehouse', { fields: ['name'], limit: 1000 });
-  const { data: items } = useFrappeGetDocList('Item', { 
-    fields: ['name', 'item_code', 'item_name', 'category', 'sub_category', 'type'], 
-    limit: 10000 
+  const { data: warehouseSearchData } = useFrappeGetCall('frappe.desk.search.search_link', {
+    doctype: 'Warehouse',
+    txt: '',
+    page_length: 1000
+  });
+  const warehouses = warehouseSearchData?.message || [];
+  const { data: items } = useFrappeGetDocList('Item', {
+    fields: ['name', 'item_code', 'item_name', 'category', 'sub_category', 'type'],
+    limit: 10000
   });
   const { data: categories } = useFrappeGetDocList('Item Category', { fields: ['name'], limit: 1000 });
   const { data: subCategories } = useFrappeGetDocList('Item Sub Category', { fields: ['name'], limit: 1000 });
@@ -143,8 +148,10 @@ export default function StockBalance() {
               value={warehouse}
               onChange={e => setWarehouse(e.target.value)}
             >
-              <MenuItem value="">All Warehouses</MenuItem>
-              {warehouses?.map(w => <MenuItem key={w.name} value={w.name}>{w.name}</MenuItem>)}
+              {warehouses?.map(w => {
+                const val = w.value || w.name;
+                return <MenuItem key={val} value={val}>{val}</MenuItem>;
+              })}
             </CustomTextField>
           </Grid>
           <Grid item xs={12} sm={6} md={4}>
