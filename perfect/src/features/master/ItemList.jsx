@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Box, Button, Typography, Table, TableBody, TableCell, TableHead, TableRow, TableContainer, Avatar, Grid, Autocomplete, createFilterOptions, CircularProgress } from '@mui/material';
+import { Box, Button, Typography, Table, TableBody, TableCell, TableHead, TableRow, TableContainer, Avatar, Grid, Autocomplete, createFilterOptions, CircularProgress, TablePagination } from '@mui/material';
 import BlankCard from '../../components/shared/BlankCard';
 import CustomTextField from '../../components/forms/theme-elements/CustomTextField';
 
@@ -18,6 +18,17 @@ export default function ItemList() {
   const [category, setCategory] = useState('');
   const [subCategory, setSubCategory] = useState('');
   const [itemType, setItemType] = useState('');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(100);
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
   // Fetch items with required fields
   const { data: items, isLoading } = useFrappeGetDocList('Item', {
@@ -60,6 +71,16 @@ export default function ItemList() {
     });
   }, [items, selectedItem, category, subCategory, itemType]);
 
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(0);
+  }, [selectedItem, category, subCategory, itemType]);
+
+  const paginatedItems = useMemo(() => {
+    if (!displayedItems) return [];
+    return displayedItems.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  }, [displayedItems, page, rowsPerPage]);
+
   // Reset subCategory if not in availableSubCategories
   useEffect(() => {
     if (subCategory && category && availableSubCategories.length > 0 && !availableSubCategories.includes(subCategory)) {
@@ -84,9 +105,9 @@ export default function ItemList() {
     <Box>
       <Box display="flex" justifyContent="space-between" mb={3}>
         <Typography variant="h5" fontWeight="bold">Item Master</Typography>
-        <Button 
-          variant="contained" 
-          startIcon={<IconPlus size={18} />} 
+        <Button
+          variant="contained"
+          startIcon={<IconPlus size={18} />}
           onClick={() => navigate('/master/item/new')}
         >
           New Item
@@ -204,17 +225,17 @@ export default function ItemList() {
                   </TableCell>
                 </TableRow>
               )}
-              {!isLoading && displayedItems.map((item) => (
-                <TableRow 
-                  hover 
-                  key={item.name} 
+              {!isLoading && paginatedItems.map((item) => (
+                <TableRow
+                  hover
+                  key={item.name}
                   sx={{ cursor: 'pointer' }}
                   onClick={() => navigate(`/master/item/${encodeURIComponent(item.name)}`)}
                 >
                   <TableCell>
-                    <Avatar 
-                      variant="rounded" 
-                      src={item.image} 
+                    <Avatar
+                      variant="rounded"
+                      src={item.image}
                       alt={item.item_name}
                       sx={{ width: 48, height: 48, bgcolor: 'grey.100' }}
                     >
@@ -253,6 +274,15 @@ export default function ItemList() {
             </TableBody>
           </Table>
         </TableContainer>
+        <TablePagination
+          rowsPerPageOptions={[10, 25, 50, 100]}
+          component="div"
+          count={displayedItems?.length || 0}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+        />
       </Box></BlankCard>
     </Box>
   );
