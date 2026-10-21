@@ -21,6 +21,10 @@ export default function StockBalance() {
   const [showZeroBalance, setShowZeroBalance] = useState(false);
   const [rows, setRows] = useState([]);
 
+  // Pagination for main Stock Balance table
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
+
   const [ledgerModalOpen, setLedgerModalOpen] = useState(false);
   const [selectedLedgerItem, setSelectedLedgerItem] = useState(null);
   const [ledgerData, setLedgerData] = useState([]);
@@ -125,12 +129,30 @@ export default function StockBalance() {
     setLoadingLedger(false);
   };
 
-  const handleChangePage = (event, newPage) => {
+  const handleLedgerChangePage = (event, newPage) => {
     setLedgerPage(newPage);
     if (selectedLedgerItem) {
       fetchLedgerData(selectedLedgerItem.item_code, selectedLedgerItem.warehouse, newPage + 1);
     }
   };
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const paginatedRows = useMemo(() => {
+    if (!rows) return [];
+    return rows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  }, [rows, page, rowsPerPage]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [warehouse, item, category, subCategory, itemType, showZeroBalance]);
 
   return (
     <Box>
@@ -270,10 +292,17 @@ export default function StockBalance() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {!isLoading && rows.map((row, idx) => (
+              {isLoading && (
+                <TableRow>
+                  <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
+                    <CircularProgress size={28} />
+                  </TableCell>
+                </TableRow>
+              )}
+              {!isLoading && paginatedRows.map((row, idx) => (
                 <TableRow
                   hover
-                  key={idx}
+                  key={row.item_code + '-' + row.warehouse || idx}
                   sx={{ cursor: 'pointer' }}
                   onClick={() => handleRowClick(row.item_code, row.warehouse, row.actual_qty)}
                 >
@@ -308,6 +337,15 @@ export default function StockBalance() {
             </TableBody>
           </Table>
         </TableContainer>
+        <TablePagination
+          rowsPerPageOptions={[10, 20, 50, 100]}
+          component="div"
+          count={rows.length}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+        />
       </Box></BlankCard>
 
       {/* Ledger Modal */}
@@ -374,7 +412,7 @@ export default function StockBalance() {
             component="div"
             count={ledgerTotal}
             page={ledgerPage}
-            onPageChange={handleChangePage}
+            onPageChange={handleLedgerChangePage}
             rowsPerPage={20}
             rowsPerPageOptions={[20]}
           />
