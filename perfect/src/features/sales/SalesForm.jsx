@@ -258,12 +258,19 @@ export default function SalesForm() {
       selling_price_list: priceList,
       driver_name: (driverName || '').trim(),
       vehicle_no: (vehicleNo || '').trim(),
-      ...(isEditMode ? {
-        name: id,
-        posting_date: existingDoc?.posting_date,
-        posting_time: existingDoc?.posting_time,
-        set_posting_time: 1
-      } : {}),
+      ...(isEditMode ? (
+        existingDoc?.docstatus === 1 ? {
+          amended_from: id,
+          posting_date: existingDoc?.posting_date,
+          posting_time: existingDoc?.posting_time,
+          set_posting_time: 1
+        } : {
+          name: id,
+          posting_date: existingDoc?.posting_date,
+          posting_time: existingDoc?.posting_time,
+          set_posting_time: 1
+        }
+      ) : {}),
       items: items.map(i => {
         const qty = Number(i.qty) || 0;
         const baseRate = Number(i.user_rate) || Number(i.rate) || 0;
@@ -309,9 +316,11 @@ export default function SalesForm() {
         success: (res) => {
           const newDocName = res.message?.name || res.name || id;
           navigate(`/sales/${encodeURIComponent(newDocName)}`);
-          return isEditMode
-            ? `Sales ${newDocName} updated successfully!`
-            : `Sales ${newDocName} saved successfully!`;
+          return existingDoc?.docstatus === 1
+            ? `Sales ${id} amended to ${newDocName} successfully!`
+            : isEditMode
+              ? `Sales ${newDocName} updated successfully!`
+              : `Sales ${newDocName} saved successfully!`;
         },
         error: (err) => {
           let errorMsg = isEditMode ? 'Error updating sales' : 'Error saving sales';
@@ -373,23 +382,6 @@ export default function SalesForm() {
     );
   }
 
-  if (isEditMode && existingDoc && existingDoc.docstatus === 1) {
-    return (
-      <Box p={3}>
-        <Button
-          startIcon={<IconArrowLeft size={18} />}
-          onClick={() => navigate(`/sales/${encodeURIComponent(id)}`)}
-          sx={{ mb: 2 }}
-        >
-          Back to Invoice
-        </Button>
-        <Typography color="error" variant="h6">
-          This Sales Invoice is already submitted and cannot be edited.
-        </Typography>
-      </Box>
-    );
-  }
-
   return (
     <Box sx={{ width: '100%', maxWidth: '100%', minWidth: 0 }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
@@ -402,7 +394,7 @@ export default function SalesForm() {
             Back
           </Button>
           <Typography variant="h5" fontWeight="bold">
-            {isEditMode ? `Edit Sale - ${id}` : 'New Sale'}
+            {isEditMode ? (existingDoc?.docstatus === 1 ? `Update Sale - ${id}` : `Edit Sale - ${id}`) : 'New Sale'}
           </Typography>
         </Box>
         <Button

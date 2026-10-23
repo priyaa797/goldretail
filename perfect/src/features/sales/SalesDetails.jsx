@@ -322,6 +322,15 @@ export default function SalesDetails() {
                 </Button>
               </>
             )}
+            {doc.docstatus === 1 && (
+              <Button
+                variant="contained"
+                startIcon={<IconEdit size={18} />}
+                onClick={() => navigate(`/sales/${encodeURIComponent(doc.name)}/edit`)}
+              >
+                Update
+              </Button>
+            )}
             <Button variant="outlined" startIcon={<IconPrinter size={18} />} onClick={() => {
               const originalTitle = document.title;
               document.title = `${doc.customer_name || doc.customer} - ${doc.name}`;
