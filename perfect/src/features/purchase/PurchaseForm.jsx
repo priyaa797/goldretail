@@ -282,7 +282,8 @@ export default function PurchaseForm() {
         is_stock_item: 1,
         stock_uom: 'Nos',
         weight_per_unit: parseFloat(newItemData.weight_per_unit) || 0,
-        weight_uom: 'Nos'
+        weight_uom: 'Nos',
+        warehouse: `NEW - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`
       };
 
       if (newItemData.nos_per_carton) {
