@@ -1,18 +1,61 @@
-import React from 'react';
-import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, Grid, CircularProgress, Chip } from '@mui/material';
+import React, { useState } from 'react';
+import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, Grid, CircularProgress, Chip, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
 import BlankCard from '../../components/shared/BlankCard';
 import CustomTextField from '../../components/forms/theme-elements/CustomTextField';
 
 import { useParams, useNavigate } from 'react-router';
-import { useFrappeGetDoc } from 'frappe-react-sdk';
-import { IconArrowLeft, IconPrinter, IconEdit } from '@tabler/icons-react';
+import { useFrappeGetDoc, useFrappePostCall } from 'frappe-react-sdk';
+import { IconArrowLeft, IconPrinter, IconEdit, IconCheck } from '@tabler/icons-react';
 import dayjs from 'dayjs';
+import toast from 'react-hot-toast';
 
 export default function SalesDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const { data: doc, isLoading, error } = useFrappeGetDoc('Sales Invoice', id);
+  const { data: doc, isLoading, error, mutate } = useFrappeGetDoc('Sales Invoice', id);
+  const { call: submitSalesInvoice } = useFrappePostCall('goldretail.api.sales.submit_sales_invoice');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmSubmitOpen, setConfirmSubmitOpen] = useState(false);
+
+  const handleSubmitInvoice = async () => {
+    setConfirmSubmitOpen(false);
+    setIsSubmitting(true);
+
+    const executeSubmit = async () => {
+      const res = await submitSalesInvoice({ invoice_name: doc.name });
+      await mutate();
+      return res;
+    };
+
+    toast.promise(
+      executeSubmit(),
+      {
+        loading: 'Submitting Sales Invoice...',
+        success: () => `Sales Invoice ${doc.name} submitted successfully!`,
+        error: (err) => {
+          let errorMsg = 'Error submitting sales invoice';
+          if (err._server_messages) {
+            try {
+              const messages = JSON.parse(err._server_messages);
+              const lastMsg = JSON.parse(messages[messages.length - 1]);
+              if (lastMsg.message) {
+                const d = new DOMParser().parseFromString(lastMsg.message, 'text/html');
+                errorMsg = d.body.textContent || d.body.innerText || errorMsg;
+              }
+            } catch (e) {
+              errorMsg = err.message || errorMsg;
+            }
+          } else if (err.message) {
+            errorMsg = err.message;
+          }
+          return errorMsg;
+        }
+      }
+    ).finally(() => {
+      setIsSubmitting(false);
+    });
+  };
 
   if (isLoading) {
     return (
@@ -252,16 +295,33 @@ export default function SalesDetails() {
           <Box display="flex" alignItems="center" gap={2}>
             <Button startIcon={<IconArrowLeft size={18} />} onClick={() => navigate('/sales')} color="inherit">Back</Button>
             <Typography variant="h5" fontWeight="bold">{doc.name}</Typography>
-            <Chip label={doc.status} color={doc.status === 'Paid' ? 'success' : doc.status === 'Unpaid' ? 'error' : 'warning'} size="small" />
+            <Chip
+              label={doc.docstatus === 0 ? 'Draft' : doc.status}
+              color={doc.docstatus === 0 ? 'warning' : doc.status === 'Paid' ? 'success' : doc.status === 'Unpaid' ? 'error' : 'default'}
+              size="small"
+            />
           </Box>
           <Box display="flex" alignItems="center" gap={2}>
-            <Button
-              variant="contained"
-              startIcon={<IconEdit size={18} />}
-              onClick={() => navigate(`/sales/${encodeURIComponent(doc.name)}/edit`)}
-            >
-              Update
-            </Button>
+            {doc.docstatus === 0 && (
+              <>
+                <Button
+                  variant="outlined"
+                  startIcon={<IconEdit size={18} />}
+                  onClick={() => navigate(`/sales/${encodeURIComponent(doc.name)}/edit`)}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<IconCheck size={18} />}
+                  onClick={() => setConfirmSubmitOpen(true)}
+                  disabled={isSubmitting}
+                >
+                  Submit
+                </Button>
+              </>
+            )}
             <Button variant="outlined" startIcon={<IconPrinter size={18} />} onClick={() => {
               const originalTitle = document.title;
               document.title = `${doc.customer_name || doc.customer} - ${doc.name}`;
@@ -624,6 +684,35 @@ export default function SalesDetails() {
             </Grid>
           </Grid>
         </Box></BlankCard>
+
+        <Dialog
+          open={confirmSubmitOpen}
+          onClose={() => !isSubmitting && setConfirmSubmitOpen(false)}
+          maxWidth="xs"
+          fullWidth
+        >
+          <DialogTitle>Submit Sales Invoice</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              Are you sure you want to submit invoice <strong>{doc.name}</strong>?
+              Once submitted, the sales invoice will be finalized and can no longer be edited.
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions sx={{ p: 2, pt: 0 }}>
+            <Button onClick={() => setConfirmSubmitOpen(false)} disabled={isSubmitting}>
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleSubmitInvoice}
+              disabled={isSubmitting}
+              startIcon={<IconCheck size={18} />}
+            >
+              {isSubmitting ? 'Submitting...' : 'Confirm Submit'}
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
 
       {/* Print Only Section */}
@@ -631,9 +720,12 @@ export default function SalesDetails() {
         {/* Header info rendered OUTSIDE the table so thead only repeats column headers */}
         <div className="print-header">
           <div className="print-header-row print-header-row-1">
-            <div className="print-header-left">
-              <strong>Invoice No:</strong> {doc.name}
-            </div>
+            {doc.docstatus === 0 ?
+              <div className="print-header-left"></div>
+              : <div className="print-header-left">
+                <strong>Invoice No:</strong> {doc.name}
+              </div>
+            }
             <div className="print-header-center">
               ||SHREE GANESHAY NAMAH||
             </div>
@@ -641,7 +733,10 @@ export default function SalesDetails() {
               <strong>Date:</strong> {dayjs(doc.posting_date).format('DD MMM YYYY')}
             </div>
           </div>
-          <div className="print-header-title">ESTIMATE/PACKING LIST</div>
+          {
+            doc.docstatus === 0 ?
+              <div className="print-header-title">PERFORMA INVOICE</div>
+              : <div className="print-header-title">ESTIMATE/PACKING LIST</div>}
           <div className="print-header-row print-header-row-2">
             <div className="print-header-customer">
               <strong>Customer:</strong> {doc.customer_name || doc.customer}

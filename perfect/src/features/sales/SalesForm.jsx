@@ -181,8 +181,7 @@ export default function SalesForm() {
     });
   }, [itemPrices]);
 
-  const { call: insertDoc } = useFrappePostCall('frappe.client.insert');
-  const { call: cancelDoc } = useFrappePostCall('frappe.client.cancel');
+  const { call: saveSalesInvoice } = useFrappePostCall('goldretail.api.sales.save_sales_invoice');
   const { call: getBarcodeItem } = useFrappePostCall('goldretail.api.item_barcode.get_item_by_barcode');
   const [barcodeInput, setBarcodeInput] = useState('');
   const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -260,7 +259,7 @@ export default function SalesForm() {
       driver_name: (driverName || '').trim(),
       vehicle_no: (vehicleNo || '').trim(),
       ...(isEditMode ? {
-        amended_from: id,
+        name: id,
         posting_date: existingDoc?.posting_date,
         posting_time: existingDoc?.posting_time,
         set_posting_time: 1
@@ -289,25 +288,15 @@ export default function SalesForm() {
         ...(Number(transportationCharges) > 0 ? [{ charge_type: 'Actual', account_head: `Transportation Charges - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`, description: 'Transportation Charges', tax_amount: Number(transportationCharges) }] : []),
         ...(Number(packagingCharges) > 0 ? [{ charge_type: 'Actual', account_head: `Packaging Charges - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`, description: 'Packaging Charges', tax_amount: Number(packagingCharges) }] : [])
       ],
-      update_stock: 1, // Crucial for our simplified workflow
-      docstatus: 1 // Try to submit immediately
+      update_stock: 1,
+      docstatus: 0
     };
 
     const executeSave = async () => {
       setIsSubmitting(true);
       try {
-        if (isEditMode) {
-          // Cancel current sales invoice if submitted
-          if (existingDoc?.docstatus === 1) {
-            await cancelDoc({ doctype: 'Sales Invoice', name: id });
-          }
-          // Insert and submit amended invoice
-          const res = await insertDoc({ doc });
-          return res;
-        } else {
-          const res = await insertDoc({ doc });
-          return res;
-        }
+        const res = await saveSalesInvoice({ doc });
+        return res;
       } finally {
         setIsSubmitting(false);
       }
@@ -318,11 +307,11 @@ export default function SalesForm() {
       {
         loading: isEditMode ? 'Updating Sales Invoice...' : 'Saving Sales Invoice...',
         success: (res) => {
-          const newDocName = res.message?.name || res.name;
-          navigate(`/sales/${newDocName}`);
+          const newDocName = res.message?.name || res.name || id;
+          navigate(`/sales/${encodeURIComponent(newDocName)}`);
           return isEditMode
-            ? `Sales ${id} amended to ${newDocName} successfully!`
-            : `Sales ${newDocName} submitted successfully!`;
+            ? `Sales ${newDocName} updated successfully!`
+            : `Sales ${newDocName} saved successfully!`;
         },
         error: (err) => {
           let errorMsg = isEditMode ? 'Error updating sales' : 'Error saving sales';
@@ -375,11 +364,28 @@ export default function SalesForm() {
 
   if (isEditMode && (docError || (!existingDoc && !isLoadingDoc))) {
     return (
-      <Box>
+      <Box p={3}>
         <Button startIcon={<IconArrowLeft size={18} />} onClick={() => navigate('/sales')} sx={{ mb: 2 }}>
           Back to Sales
         </Button>
         <Typography color="error">Error loading invoice details for editing.</Typography>
+      </Box>
+    );
+  }
+
+  if (isEditMode && existingDoc && existingDoc.docstatus === 1) {
+    return (
+      <Box p={3}>
+        <Button
+          startIcon={<IconArrowLeft size={18} />}
+          onClick={() => navigate(`/sales/${encodeURIComponent(id)}`)}
+          sx={{ mb: 2 }}
+        >
+          Back to Invoice
+        </Button>
+        <Typography color="error" variant="h6">
+          This Sales Invoice is already submitted and cannot be edited.
+        </Typography>
       </Box>
     );
   }
@@ -390,13 +396,13 @@ export default function SalesForm() {
         <Box display="flex" alignItems="center" gap={2}>
           <Button
             startIcon={<IconArrowLeft size={18} />}
-            onClick={() => navigate(isEditMode ? `/sales/${id}` : '/sales')}
+            onClick={() => navigate(isEditMode ? `/sales/${encodeURIComponent(id)}` : '/sales')}
             color="inherit"
           >
             Back
           </Button>
           <Typography variant="h5" fontWeight="bold">
-            {isEditMode ? `Update Sale - ${id}` : 'New Sale'}
+            {isEditMode ? `Edit Sale - ${id}` : 'New Sale'}
           </Typography>
         </Box>
         <Button
@@ -405,7 +411,7 @@ export default function SalesForm() {
           onClick={handleSave}
           disabled={isSubmitting}
         >
-          {isEditMode ? 'Update & Submit' : 'Save & Submit'}
+          Save
         </Button>
       </Box>
 

@@ -14,7 +14,7 @@ export default function SalesList() {
 
   const { data, isLoading } = useFrappeGetDocList('Sales Invoice', {
     filters: { "docstatus": ["!=", 2] },
-    fields: ['name', 'customer', 'grand_total', 'posting_date', 'outstanding_amount', 'status'],
+    fields: ['name', 'customer', 'grand_total', 'posting_date', 'outstanding_amount', 'status', 'docstatus'],
     orderBy: { field: 'creation', order: 'desc' },
     limit: 10000
   });
@@ -61,7 +61,7 @@ export default function SalesList() {
                 </TableRow>
               )}
               {!isLoading && paginatedData.map((row) => (
-                <TableRow hover key={row.name} onClick={() => navigate(`/sales/${row.name}`)} sx={{ cursor: 'pointer' }}>
+                <TableRow hover key={row.name} onClick={() => navigate(`/sales/${encodeURIComponent(row.name)}`)} sx={{ cursor: 'pointer' }}>
                   <TableCell><Typography variant="subtitle2" color="textSecondary">{row.name}</Typography></TableCell>
                   <TableCell><Typography variant="subtitle2" color="textSecondary">{row.customer}</Typography></TableCell>
                   <TableCell><Typography variant="subtitle2" color="textSecondary">{dayjs(row.posting_date).format('DD MMM YYYY')}</Typography></TableCell>
@@ -69,9 +69,9 @@ export default function SalesList() {
                   <TableCell align="right"><Typography variant="subtitle2" color="textSecondary">{row.outstanding_amount}</Typography></TableCell>
                   <TableCell>
                     <Chip
-                      label={row.status}
+                      label={row.docstatus === 0 ? 'Draft' : row.status}
                       size="small"
-                      color={row.status === 'Paid' ? 'success' : row.status === 'Unpaid' ? 'error' : 'warning'}
+                      color={row.docstatus === 0 ? 'warning' : row.status === 'Paid' ? 'success' : row.status === 'Unpaid' ? 'error' : 'default'}
                     />
                   </TableCell>
                 </TableRow>
