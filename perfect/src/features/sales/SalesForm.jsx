@@ -1,23 +1,31 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, Button, Typography, Grid, MenuItem, IconButton, Table, TableContainer, TableBody, TableCell, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, createFilterOptions, CircularProgress } from '@mui/material';
+import { Box, Button, Typography, Grid, MenuItem, IconButton, Table, TableContainer, TableBody, TableCell, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, createFilterOptions, CircularProgress, Alert, Chip } from '@mui/material';
 import BlankCard from '../../components/shared/BlankCard';
 
 import CustomTextField from '../../components/forms/theme-elements/CustomTextField';
 
 import { useFrappePostCall, useFrappeGetDocList, useFrappeGetCall, useFrappeGetDoc } from 'frappe-react-sdk';
 import { useNavigate, useParams } from 'react-router';
-import { IconTrash, IconDeviceFloppy, IconCamera, IconArrowLeft } from '@tabler/icons-react';
+import { IconTrash, IconDeviceFloppy, IconCamera, IconArrowLeft, IconWifiOff, IconRestore, IconCheck } from '@tabler/icons-react';
 import toast from 'react-hot-toast';
 import { Html5QrcodeScanner } from 'html5-qrcode';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+
+dayjs.extend(relativeTime);
 
 const filterOptions = createFilterOptions({
   stringify: (option) => `${option.item_code} ${option.item_name || ''}`,
 });
 
+const DRAFT_KEY_PREFIX = 'goldretail_draft_sales_invoice_';
+const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+
 export default function SalesForm() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditMode = Boolean(id);
+  const draftStorageKey = isEditMode ? `${DRAFT_KEY_PREFIX}${id}` : `${DRAFT_KEY_PREFIX}new`;
 
   const [customer, setCustomer] = useState('');
   const [priceList, setPriceList] = useState('Wholesale');
@@ -31,6 +39,13 @@ export default function SalesForm() {
   const initialSnapshot = useRef(null);
   const [openRowIndex, setOpenRowIndex] = useState(null);
   const focusRowIndexRef = useRef(null);
+
+  // Autosave and network states
+  const [savedDraft, setSavedDraft] = useState(null);
+  const [showDraftBanner, setShowDraftBanner] = useState(false);
+  const [draftInitialized, setDraftInitialized] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState(null);
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
 
   const { data: existingDoc, isLoading: isLoadingDoc, error: docError } = useFrappeGetDoc('Sales Invoice', isEditMode ? id : null);
 
@@ -181,6 +196,159 @@ export default function SalesForm() {
     });
   }, [itemPrices]);
 
+  // Cleanup drafts older than 3 days
+  const cleanExpiredDrafts = () => {
+    try {
+      const now = Date.now();
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(DRAFT_KEY_PREFIX)) {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed.timestamp && (now - parsed.timestamp > THREE_DAYS_MS)) {
+              keysToRemove.push(key);
+            }
+          }
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+    } catch (e) {
+      console.error('Error cleaning expired drafts', e);
+    }
+  };
+
+  // Monitor network connectivity
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      toast.success('Internet connection restored');
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      toast.error('Internet connection lost. Changes are being saved locally.', { duration: 4000 });
+    };
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Check for unsaved draft on mount or when storage key changes
+  useEffect(() => {
+    cleanExpiredDrafts();
+    try {
+      const raw = localStorage.getItem(draftStorageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const isNotExpired = parsed.timestamp && (Date.now() - parsed.timestamp <= THREE_DAYS_MS);
+        const hasData = Boolean(
+          parsed.customer ||
+          (parsed.items && parsed.items.some(i => i.item_code)) ||
+          parsed.driverName ||
+          parsed.vehicleNo
+        );
+        if (isNotExpired && hasData) {
+          setSavedDraft(parsed);
+          setShowDraftBanner(true);
+        } else if (!isNotExpired) {
+          localStorage.removeItem(draftStorageKey);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load draft from localStorage', e);
+    } finally {
+      if (!isEditMode) {
+        setDraftInitialized(true);
+      }
+    }
+  }, [draftStorageKey, isEditMode]);
+
+  useEffect(() => {
+    if (isEditMode && docLoaded) {
+      setDraftInitialized(true);
+    }
+  }, [isEditMode, docLoaded]);
+
+  // Restore draft handler
+  const handleRestoreDraft = () => {
+    if (!savedDraft) return;
+    if (savedDraft.customer !== undefined) setCustomer(savedDraft.customer);
+    if (savedDraft.priceList !== undefined) setPriceList(savedDraft.priceList);
+    if (savedDraft.driverName !== undefined) setDriverName(savedDraft.driverName);
+    if (savedDraft.vehicleNo !== undefined) setVehicleNo(savedDraft.vehicleNo);
+    if (savedDraft.transportationCharges !== undefined) setTransportationCharges(savedDraft.transportationCharges);
+    if (savedDraft.packagingCharges !== undefined) setPackagingCharges(savedDraft.packagingCharges);
+    if (savedDraft.items && savedDraft.items.length > 0) {
+      setItems(savedDraft.items);
+    }
+    setLastSavedAt(savedDraft.timestamp);
+    setShowDraftBanner(false);
+    toast.success('Draft restored successfully');
+  };
+
+  // Discard draft handler
+  const handleDiscardDraft = () => {
+    try {
+      localStorage.removeItem(draftStorageKey);
+    } catch (e) {
+      console.error(e);
+    }
+    setSavedDraft(null);
+    setShowDraftBanner(false);
+    toast('Draft discarded', { icon: '🗑️' });
+  };
+
+  // Debounced autosave effect
+  useEffect(() => {
+    if (!draftInitialized) return;
+
+    const hasData = Boolean(
+      customer ||
+      (items && items.some(i => i.item_code)) ||
+      driverName ||
+      vehicleNo ||
+      transportationCharges ||
+      packagingCharges
+    );
+
+    if (!hasData) return;
+
+    const timer = setTimeout(() => {
+      try {
+        const draftPayload = {
+          timestamp: Date.now(),
+          customer,
+          priceList,
+          driverName,
+          vehicleNo,
+          transportationCharges,
+          packagingCharges,
+          items
+        };
+        localStorage.setItem(draftStorageKey, JSON.stringify(draftPayload));
+        setLastSavedAt(draftPayload.timestamp);
+      } catch (e) {
+        console.error('Failed to autosave draft', e);
+      }
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [
+    draftInitialized,
+    draftStorageKey,
+    customer,
+    priceList,
+    driverName,
+    vehicleNo,
+    transportationCharges,
+    packagingCharges,
+    items
+  ]);
+
   const { call: saveSalesInvoice } = useFrappePostCall('goldretail.api.sales.save_sales_invoice');
   const { call: getBarcodeItem } = useFrappePostCall('goldretail.api.item_barcode.get_item_by_barcode');
   const [barcodeInput, setBarcodeInput] = useState('');
@@ -314,6 +482,14 @@ export default function SalesForm() {
       {
         loading: isEditMode ? 'Updating Sales Invoice...' : 'Saving Sales Invoice...',
         success: (res) => {
+          try {
+            localStorage.removeItem(draftStorageKey);
+          } catch (e) {
+            console.error(e);
+          }
+          setSavedDraft(null);
+          setShowDraftBanner(false);
+          setLastSavedAt(null);
           const newDocName = res.message?.name || res.name || id;
           navigate(`/sales/${encodeURIComponent(newDocName)}`);
           return existingDoc?.docstatus === 1
@@ -384,7 +560,7 @@ export default function SalesForm() {
 
   return (
     <Box sx={{ width: '100%', maxWidth: '100%', minWidth: 0 }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Box display="flex" alignItems="center" gap={2}>
           <Button
             startIcon={<IconArrowLeft size={18} />}
@@ -397,15 +573,85 @@ export default function SalesForm() {
             {isEditMode ? (existingDoc?.docstatus === 1 ? `Update Sale - ${id}` : `Edit Sale - ${id}`) : 'New Sale'}
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<IconDeviceFloppy size={18} />}
-          onClick={handleSave}
-          disabled={isSubmitting}
-        >
-          Save
-        </Button>
+        <Box display="flex" alignItems="center" gap={1.5}>
+          {!isOnline && (
+            <Chip
+              icon={<IconWifiOff size={16} />}
+              label="Offline"
+              color="error"
+              size="small"
+              sx={{ fontWeight: 600 }}
+            />
+          )}
+          {lastSavedAt && (
+            <Chip
+              icon={<IconCheck size={16} />}
+              label={`Auto-saved (${dayjs(lastSavedAt).format('hh:mm A')})`}
+              variant="outlined"
+              size="small"
+              color="default"
+            />
+          )}
+          <Button
+            variant="contained"
+            startIcon={<IconDeviceFloppy size={18} />}
+            onClick={handleSave}
+            disabled={isSubmitting}
+          >
+            Save
+          </Button>
+        </Box>
       </Box>
+
+      {!isOnline && (
+        <Alert
+          severity="warning"
+          icon={<IconWifiOff size={22} />}
+          sx={{ mb: 3 }}
+        >
+          <Typography variant="subtitle2" fontWeight="600">
+            You are currently working offline
+          </Typography>
+          <Typography variant="body2">
+            No internet connection detected. Don't worry — all your entered items and details are safely auto-saved on this device. You can continue adding items, and click Save once your connection is restored.
+          </Typography>
+        </Alert>
+      )}
+
+      {showDraftBanner && savedDraft && (
+        <Alert
+          severity="info"
+          icon={<IconRestore size={22} />}
+          sx={{ mb: 3 }}
+          action={
+            <Box display="flex" gap={1} alignItems="center" sx={{ mt: { xs: 1, sm: 0 } }}>
+              <Button
+                color="primary"
+                size="small"
+                variant="contained"
+                onClick={handleRestoreDraft}
+              >
+                Restore Draft
+              </Button>
+              <Button
+                color="inherit"
+                size="small"
+                variant="outlined"
+                onClick={handleDiscardDraft}
+              >
+                Discard
+              </Button>
+            </Box>
+          }
+        >
+          <Typography variant="subtitle2" fontWeight="600">
+            Unsaved Draft Found
+          </Typography>
+          <Typography variant="body2">
+            An unsaved draft from {dayjs(savedDraft.timestamp).fromNow()} ({dayjs(savedDraft.timestamp).format('DD MMM, hh:mm A')}) containing {savedDraft.items?.filter(i => i.item_code)?.length || 0} item(s) was found. Would you like to restore it?
+          </Typography>
+        </Alert>
+      )}
 
       <BlankCard><Box sx={{ p: 3, mb: 3 }}>
         <Grid container spacing={3}>
