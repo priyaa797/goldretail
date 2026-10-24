@@ -50,6 +50,7 @@ export default function PurchaseExcelImportDialog({
   const [file, setFile] = useState(null);
   const [isValidating, setIsValidating] = useState(false);
   const [isCreatingItems, setIsCreatingItems] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const [validationData, setValidationData] = useState(null);
   const [activeTab, setActiveTab] = useState(0); // 0: All, 1: Mismatches, 2: Missing, 3: Invalid
   const [editedRows, setEditedRows] = useState([]);
@@ -60,6 +61,7 @@ export default function PurchaseExcelImportDialog({
   const { data: subCategories } = useFrappeGetDocList('Item Sub Category', { fields: ['name'], limit: 1000 });
   const { call: validateExcelCall } = useFrappePostCall('goldretail.api.purchase_import.validate_purchase_excel');
   const { call: createMissingItemsCall } = useFrappePostCall('goldretail.api.purchase_import.create_missing_items');
+  const { call: updateItemPricesCall } = useFrappePostCall('goldretail.api.purchase_import.update_item_prices_from_import');
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -136,6 +138,64 @@ export default function PurchaseExcelImportDialog({
     });
   };
 
+  const renderPriceCell = (row, originalIdx, field, currentRateField, label) => {
+    const val = row[field];
+    const currVal = row[currentRateField];
+    const numVal = val !== '' && val !== null && val !== undefined ? Number(val) : null;
+    const numCurr = currVal !== '' && currVal !== null && currVal !== undefined ? Number(currVal) : null;
+
+    const hasNewVal = numVal !== null && !isNaN(numVal) && numVal > 0;
+    const hasCurrVal = numCurr !== null && !isNaN(numCurr) && numCurr > 0;
+
+    const isChanged = hasNewVal && (!hasCurrVal || Math.abs(numVal - numCurr) > 0.001);
+    const isUnchanged = hasNewVal && hasCurrVal && Math.abs(numVal - numCurr) <= 0.001;
+
+    return (
+      <Box sx={{ minWidth: 125 }}>
+        <CustomTextField
+          size="small"
+          type="number"
+          value={val ?? ''}
+          placeholder="0.00"
+          onChange={(e) => handleRowChange(originalIdx, field, e.target.value)}
+          sx={{
+            width: 100,
+            ...(isChanged && {
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: `${theme.palette.warning.main} !important`,
+                borderWidth: '2px !important',
+              },
+              backgroundColor: 'rgba(255, 174, 31, 0.08)',
+              borderRadius: 1
+            })
+          }}
+        />
+        {isChanged && (
+          <Box mt={0.5}>
+            <Tooltip title={hasCurrVal ? `Current database price: ₹${numCurr}. Importing will update this to ₹${numVal}.` : `No price currently set. Importing will set price to ₹${numVal}.`}>
+              <Chip
+                size="small"
+                label={hasCurrVal ? `₹${numCurr} → ₹${numVal}` : `New: ₹${numVal}`}
+                color={hasCurrVal ? 'warning' : 'success'}
+                sx={{ height: 20, fontSize: '0.68rem', fontWeight: 600, px: 0.5 }}
+              />
+            </Tooltip>
+          </Box>
+        )}
+        {isUnchanged && (
+          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5, fontSize: '0.72rem' }}>
+            Unchanged (₹{numCurr})
+          </Typography>
+        )}
+        {!hasNewVal && (
+          <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 0.5, fontSize: '0.72rem' }}>
+            {hasCurrVal ? `Current: ₹${numCurr}` : 'No update'}
+          </Typography>
+        )}
+      </Box>
+    );
+  };
+
   // Create Missing Items Workflow
   const handleSaveAndCreateItems = async () => {
     const missingRows = editedRows.filter(r => r.status === 'new_item');
@@ -167,7 +227,10 @@ export default function PurchaseExcelImportDialog({
         sub_category: r.sub_category || null,
         description: r.description || '',
         pcs_per_ctn: Number(r.excel_pcs_ctn),
-        image_preview: r.image_preview || null
+        image_preview: r.image_preview || null,
+        purchase_rate: r.purchase_rate !== '' && r.purchase_rate !== null && r.purchase_rate !== undefined ? Number(r.purchase_rate) : null,
+        wholesale_rate: r.wholesale_rate !== '' && r.wholesale_rate !== null && r.wholesale_rate !== undefined ? Number(r.wholesale_rate) : null,
+        retail_rate: r.retail_rate !== '' && r.retail_rate !== null && r.retail_rate !== undefined ? Number(r.retail_rate) : null,
       }));
 
       const res = await createMissingItemsCall({ items: payload });
@@ -182,7 +245,10 @@ export default function PurchaseExcelImportDialog({
             return {
               ...r,
               status: 'existing_match',
-              db_carton_qty: r.excel_pcs_ctn
+              db_carton_qty: r.excel_pcs_ctn,
+              current_purchase_rate: r.purchase_rate ? Number(r.purchase_rate) : r.current_purchase_rate,
+              current_wholesale_rate: r.wholesale_rate ? Number(r.wholesale_rate) : r.current_wholesale_rate,
+              current_retail_rate: r.retail_rate ? Number(r.retail_rate) : r.current_retail_rate,
             };
           }
           return r;
@@ -219,7 +285,7 @@ export default function PurchaseExcelImportDialog({
     executeImport(false);
   };
 
-  const executeImport = (partialConfirmed = false) => {
+  const executeImport = async (partialConfirmed = false) => {
     // Eligible rows are existing_match and existing_mismatch
     const eligibleRows = editedRows.filter(r => r.status === 'existing_match' || r.status === 'existing_mismatch');
 
@@ -228,31 +294,56 @@ export default function PurchaseExcelImportDialog({
       return;
     }
 
-    // Map to PurchaseForm items schema
-    const newPurchaseItems = eligibleRows.map(r => {
-      const carton = Number(r.carton_count) || 0;
-      const packing = Number(r.excel_pcs_ctn) || 0;
-      const qty = Number(r.total_qty) || (carton * packing);
+    setIsImporting(true);
+    const toastId = toast.loading('Importing items and updating price lists...');
 
-      return {
-        item_code: r.item_code,
-        item_name: r.item_name || '',
-        description: r.description || '',
-        carton: carton > 0 ? carton : '',
-        packing: packing > 0 ? packing : '',
-        qty: qty > 0 ? qty : '',
-        rate: 0,
-        total_weight: '',
-        discount: '',
-        // Keep reference to db carton qty for pre-submission mismatch check
-        imported_master_packing: r.db_carton_qty
-      };
-    });
+    try {
+      // 1. Update prices in Item Price list for rows that have rates
+      const priceItems = eligibleRows
+        .map(r => ({
+          item_code: r.item_code,
+          purchase_rate: r.purchase_rate !== '' && r.purchase_rate !== null && r.purchase_rate !== undefined ? Number(r.purchase_rate) : null,
+          wholesale_rate: r.wholesale_rate !== '' && r.wholesale_rate !== null && r.wholesale_rate !== undefined ? Number(r.wholesale_rate) : null,
+          retail_rate: r.retail_rate !== '' && r.retail_rate !== null && r.retail_rate !== undefined ? Number(r.retail_rate) : null,
+        }))
+        .filter(p => (p.purchase_rate && p.purchase_rate > 0) || (p.wholesale_rate && p.wholesale_rate > 0) || (p.retail_rate && p.retail_rate > 0));
 
-    onImportItems(newPurchaseItems);
-    setConfirmPartialModalOpen(false);
-    handleReset();
-    onClose();
+      if (priceItems.length > 0) {
+        await updateItemPricesCall({ items: priceItems });
+      }
+
+      // 2. Map to PurchaseForm items schema
+      const newPurchaseItems = eligibleRows.map(r => {
+        const carton = Number(r.carton_count) || 0;
+        const packing = Number(r.excel_pcs_ctn) || 0;
+        const qty = Number(r.total_qty) || (carton * packing);
+        const rate = r.purchase_rate !== '' && r.purchase_rate !== null && r.purchase_rate !== undefined ? Number(r.purchase_rate) : 0;
+
+        return {
+          item_code: r.item_code,
+          item_name: r.item_name || '',
+          description: r.description || '',
+          carton: carton > 0 ? carton : '',
+          packing: packing > 0 ? packing : '',
+          qty: qty > 0 ? qty : '',
+          rate: rate > 0 ? rate : 0,
+          total_weight: '',
+          discount: '',
+          // Keep reference to db carton qty for pre-submission mismatch check
+          imported_master_packing: r.db_carton_qty
+        };
+      });
+
+      onImportItems(newPurchaseItems);
+      toast.success(`Successfully imported ${newPurchaseItems.length} item(s)!`, { id: toastId });
+      setConfirmPartialModalOpen(false);
+      handleReset();
+      onClose();
+    } catch (err) {
+      toast.error(err.message || 'Error updating price lists or importing items', { id: toastId });
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const handleReset = () => {
@@ -277,6 +368,13 @@ export default function PurchaseExcelImportDialog({
     mismatch: editedRows.filter(r => r.status === 'existing_mismatch').length,
     missing: editedRows.filter(r => r.status === 'new_item').length,
     invalid: editedRows.filter(r => r.status === 'invalid').length,
+    priceChanges: editedRows.filter(r => {
+      if (r.status !== 'existing_match' && r.status !== 'existing_mismatch') return false;
+      const pChg = r.purchase_rate !== '' && r.purchase_rate !== null && r.purchase_rate !== undefined && (!r.current_purchase_rate || Math.abs(Number(r.purchase_rate) - Number(r.current_purchase_rate)) > 0.001);
+      const wChg = r.wholesale_rate !== '' && r.wholesale_rate !== null && r.wholesale_rate !== undefined && (!r.current_wholesale_rate || Math.abs(Number(r.wholesale_rate) - Number(r.current_wholesale_rate)) > 0.001);
+      const rChg = r.retail_rate !== '' && r.retail_rate !== null && r.retail_rate !== undefined && (!r.current_retail_rate || Math.abs(Number(r.retail_rate) - Number(r.current_retail_rate)) > 0.001);
+      return pChg || wChg || rChg;
+    }).length,
   };
 
   return (
@@ -366,6 +464,13 @@ export default function PurchaseExcelImportDialog({
                     variant={activeTab === 2 ? 'filled' : 'outlined'}
                     onClick={() => setActiveTab(2)}
                   />
+                  {summary.priceChanges > 0 && (
+                    <Chip
+                      color="secondary"
+                      label={`Price Updates: ${summary.priceChanges}`}
+                      variant="outlined"
+                    />
+                  )}
                   {summary.invalid > 0 && (
                     <Chip
                       color="error"
@@ -423,14 +528,29 @@ export default function PurchaseExcelImportDialog({
                     <Table size="small" stickyHeader>
                       <TableHead>
                         <TableRow>
-                          <TableCell sx={{ width: 50 }}>S.No.</TableCell>
-                          <TableCell sx={{ width: 80 }}>Image</TableCell>
-                          <TableCell sx={{ minWidth: 140 }}>Item Code</TableCell>
-                          <TableCell sx={{ minWidth: 200 }}>Item Name</TableCell>
-                          <TableCell sx={{ minWidth: 160 }}>Pieces / Carton (PCS/CTN)</TableCell>
-                          <TableCell sx={{ width: 100 }}>Cartons (CTN)</TableCell>
-                          <TableCell sx={{ width: 120 }}>Total Qty (PCS)</TableCell>
-                          <TableCell sx={{ width: 140 }}>Status</TableCell>
+                          <TableCell sx={{ width: 45 }}>S.No.</TableCell>
+                          <TableCell sx={{ width: 60 }}>Image</TableCell>
+                          <TableCell sx={{ minWidth: 120 }}>Item Code</TableCell>
+                          <TableCell sx={{ minWidth: 160 }}>Item Name</TableCell>
+                          <TableCell sx={{ minWidth: 130 }}>
+                            <Tooltip title="Price at which item is purchased. Updates Standard Buying price list and Purchase Form rate.">
+                              <span>Purchase Rate (₹)</span>
+                            </Tooltip>
+                          </TableCell>
+                          <TableCell sx={{ minWidth: 130 }}>
+                            <Tooltip title="Price to update in Wholesale price list.">
+                              <span>Wholesale Rate (₹)</span>
+                            </Tooltip>
+                          </TableCell>
+                          <TableCell sx={{ minWidth: 130 }}>
+                            <Tooltip title="Price to update in Retail price list.">
+                              <span>Retail Rate (₹)</span>
+                            </Tooltip>
+                          </TableCell>
+                          <TableCell sx={{ minWidth: 140 }}>Pieces / Carton (PCS/CTN)</TableCell>
+                          <TableCell sx={{ width: 90 }}>Cartons (CTN)</TableCell>
+                          <TableCell sx={{ width: 100 }}>Total Qty (PCS)</TableCell>
+                          <TableCell sx={{ width: 130 }}>Status</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -452,9 +572,18 @@ export default function PurchaseExcelImportDialog({
                                 <Typography variant="body2" fontWeight="bold">{row.item_code}</Typography>
                               </TableCell>
                               <TableCell>
-                                <Typography variant="body2" noWrap sx={{ maxWidth: 280 }}>
+                                <Typography variant="body2" noWrap sx={{ maxWidth: 220 }}>
                                   {row.item_name}
                                 </Typography>
+                              </TableCell>
+                              <TableCell>
+                                {renderPriceCell(row, originalIdx, 'purchase_rate', 'current_purchase_rate', 'Purchase Rate')}
+                              </TableCell>
+                              <TableCell>
+                                {renderPriceCell(row, originalIdx, 'wholesale_rate', 'current_wholesale_rate', 'Wholesale Rate')}
+                              </TableCell>
+                              <TableCell>
+                                {renderPriceCell(row, originalIdx, 'retail_rate', 'current_retail_rate', 'Retail Rate')}
                               </TableCell>
                               <TableCell>
                                 {/* Highlight mismatched PCS/CTN value with visible red outline */}
@@ -557,14 +686,17 @@ export default function PurchaseExcelImportDialog({
                       <Table size="small" stickyHeader>
                         <TableHead>
                           <TableRow>
-                            <TableCell sx={{ width: 50 }}>S.No.</TableCell>
-                            <TableCell sx={{ width: 70 }}>Image</TableCell>
-                            <TableCell sx={{ minWidth: 140 }}>Item Code (ITEM NO.)</TableCell>
-                            <TableCell sx={{ minWidth: 180 }}>Item Name</TableCell>
-                            <TableCell sx={{ minWidth: 150 }}>Item Category</TableCell>
-                            <TableCell sx={{ minWidth: 160 }}>Item Subcategory</TableCell>
-                            <TableCell sx={{ width: 120 }}>Quantity / Carton</TableCell>
-                            <TableCell sx={{ minWidth: 200 }}>Description</TableCell>
+                            <TableCell sx={{ width: 45 }}>S.No.</TableCell>
+                            <TableCell sx={{ width: 60 }}>Image</TableCell>
+                            <TableCell sx={{ minWidth: 120 }}>Item Code (ITEM NO.)</TableCell>
+                            <TableCell sx={{ minWidth: 160 }}>Item Name</TableCell>
+                            <TableCell sx={{ minWidth: 110 }}>Purchase Rate (₹)</TableCell>
+                            <TableCell sx={{ minWidth: 110 }}>Wholesale Rate (₹)</TableCell>
+                            <TableCell sx={{ minWidth: 110 }}>Retail Rate (₹)</TableCell>
+                            <TableCell sx={{ minWidth: 140 }}>Item Category</TableCell>
+                            <TableCell sx={{ minWidth: 140 }}>Item Subcategory</TableCell>
+                            <TableCell sx={{ width: 100 }}>Qty / Carton</TableCell>
+                            <TableCell sx={{ minWidth: 180 }}>Description</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -590,6 +722,36 @@ export default function PurchaseExcelImportDialog({
                                     fullWidth
                                     value={row.item_name}
                                     onChange={(e) => handleRowChange(originalIdx, 'item_name', e.target.value)}
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <CustomTextField
+                                    size="small"
+                                    type="number"
+                                    placeholder="0.00"
+                                    value={row.purchase_rate ?? ''}
+                                    onChange={(e) => handleRowChange(originalIdx, 'purchase_rate', e.target.value)}
+                                    sx={{ width: 95 }}
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <CustomTextField
+                                    size="small"
+                                    type="number"
+                                    placeholder="0.00"
+                                    value={row.wholesale_rate ?? ''}
+                                    onChange={(e) => handleRowChange(originalIdx, 'wholesale_rate', e.target.value)}
+                                    sx={{ width: 95 }}
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <CustomTextField
+                                    size="small"
+                                    type="number"
+                                    placeholder="0.00"
+                                    value={row.retail_rate ?? ''}
+                                    onChange={(e) => handleRowChange(originalIdx, 'retail_rate', e.target.value)}
+                                    sx={{ width: 95 }}
                                   />
                                 </TableCell>
                                 <TableCell>
@@ -684,17 +846,17 @@ export default function PurchaseExcelImportDialog({
         </DialogContent>
 
         <DialogActions sx={{ p: 2, display: 'flex', justifyContent: 'space-between' }}>
-          <Button onClick={onClose} color="inherit">
+          <Button onClick={onClose} color="inherit" disabled={isImporting}>
             Cancel
           </Button>
           {validationData && (
             <Button
               variant="contained"
               onClick={handleProceedImport}
-              disabled={summary.match + summary.mismatch === 0}
-              startIcon={<IconCheck size={18} />}
+              disabled={summary.match + summary.mismatch === 0 || isImporting}
+              startIcon={isImporting ? <CircularProgress size={18} color="inherit" /> : <IconCheck size={18} />}
             >
-              Import {summary.match + summary.mismatch} Eligible Items into Purchase
+              {isImporting ? 'Importing & Updating Prices...' : `Import ${summary.match + summary.mismatch} Eligible Items into Purchase`}
             </Button>
           )}
         </DialogActions>

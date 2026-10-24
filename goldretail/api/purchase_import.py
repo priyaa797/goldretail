@@ -133,6 +133,12 @@ def detect_column_mapping(ws):
                 col_map[c] = 'category'
             elif 'sub' in combined and 'category' in combined:
                 col_map[c] = 'sub_category'
+            elif any(k in combined for k in ['wholesale rate', 'wholesale price', 'ws rate', 'ws price', 'w.s. rate', 'w.s rate', 'wholesale', 'ws']):
+                col_map[c] = 'wholesale_rate'
+            elif any(k in combined for k in ['retail rate', 'retail price', 'rt rate', 'rt price', 'retail', 'mrp']):
+                col_map[c] = 'retail_rate'
+            elif any(k in combined for k in ['purchase rate', 'purchase price', 'buying rate', 'buying price', 'cost rate', 'cost price', 'p rate', 'p. rate', 'p.rate', 'purchase', 'cost']) or (('rate' in combined or 'price' in combined) and 'wholesale' not in combined and 'retail' not in combined):
+                col_map[c] = 'purchase_rate'
     else:
         header_end_row = 1
         for c in range(1, ws.max_column + 1):
@@ -153,8 +159,58 @@ def detect_column_mapping(ws):
                 col_map[c] = 'category'
             elif 'sub' in val and 'category' in val:
                 col_map[c] = 'sub_category'
+            elif any(k in val for k in ['wholesale rate', 'wholesale price', 'ws rate', 'ws price', 'w.s. rate', 'w.s rate', 'wholesale', 'ws']):
+                col_map[c] = 'wholesale_rate'
+            elif any(k in val for k in ['retail rate', 'retail price', 'rt rate', 'rt price', 'retail', 'mrp']):
+                col_map[c] = 'retail_rate'
+            elif any(k in val for k in ['purchase rate', 'purchase price', 'buying rate', 'buying price', 'cost rate', 'cost price', 'p rate', 'p. rate', 'p.rate', 'purchase', 'cost', 'rate', 'price']):
+                col_map[c] = 'purchase_rate'
 
     return header_end_row, col_map
+
+def parse_rate(val):
+    """Safely parse rate from cell value as float, or None if empty/invalid."""
+    if val is None or str(val).strip() == '':
+        return None
+    try:
+        s = str(val).replace('₹', '').replace('$', '').replace(',', '').strip()
+        f = float(s)
+        return f if f > 0 else None
+    except (ValueError, TypeError):
+        return None
+
+def set_price_record(item_code, price_list, rate, buying=0, selling=1):
+    """Updates or creates an Item Price record for given item_code and price_list."""
+    try:
+        existing_price = frappe.db.get_value(
+            "Item Price",
+            {"item_code": item_code, "price_list": price_list},
+            "name"
+        )
+        if existing_price:
+            doc = frappe.get_doc("Item Price", existing_price)
+            doc.price_list_rate = float(rate)
+            doc.buying = buying
+            doc.selling = selling
+            doc.uom = "Nos"
+            doc.save(ignore_permissions=True)
+            return doc.name
+        else:
+            doc = frappe.get_doc({
+                "doctype": "Item Price",
+                "item_code": item_code,
+                "price_list": price_list,
+                "uom": "Nos",
+                "price_list_rate": float(rate),
+                "currency": "INR",
+                "buying": buying,
+                "selling": selling
+            })
+            doc.insert(ignore_permissions=True)
+            return doc.name
+    except Exception as e:
+        frappe.log_error(f"Error setting item price for {item_code} in {price_list}: {str(e)}")
+        return None
 
 @frappe.whitelist()
 def validate_purchase_excel(file_url=None):
@@ -249,6 +305,14 @@ def validate_purchase_excel(file_url=None):
         img_obj = image_map.get(r)
         image_preview = get_image_base64(img_obj) if img_obj else None
 
+        purchase_rate_val = ws.cell(r, inv_map['purchase_rate']).value if 'purchase_rate' in inv_map else None
+        wholesale_rate_val = ws.cell(r, inv_map['wholesale_rate']).value if 'wholesale_rate' in inv_map else None
+        retail_rate_val = ws.cell(r, inv_map['retail_rate']).value if 'retail_rate' in inv_map else None
+
+        purchase_rate = parse_rate(purchase_rate_val)
+        wholesale_rate = parse_rate(wholesale_rate_val)
+        retail_rate = parse_rate(retail_rate_val)
+
         row_info = {
             'row_num': r,
             'item_code': code_str,
@@ -259,6 +323,15 @@ def validate_purchase_excel(file_url=None):
             'excel_pcs_ctn': pcs_ctn_val,
             'carton_count': carton_val,
             'total_qty': total_qty_val,
+            'purchase_rate': purchase_rate,
+            'wholesale_rate': wholesale_rate,
+            'retail_rate': retail_rate,
+            'current_purchase_rate': None,
+            'current_wholesale_rate': None,
+            'current_retail_rate': None,
+            'purchase_rate_changed': False,
+            'wholesale_rate_changed': False,
+            'retail_rate_changed': False,
             'has_image': bool(image_preview),
             'image_preview': image_preview,
             'status': 'valid',
@@ -351,6 +424,9 @@ def validate_purchase_excel(file_url=None):
     # Step 2: Check each item against Item master in Frappe DB
     valid_codes = [r['item_code'] for r in rows_data if r['status'] != 'invalid']
     existing_items_dict = {}
+    item_prices_map = {}
+    buying_pl = frappe.db.get_value("Price List", {"buying": 1}, "name") or "Standard Buying"
+
     if valid_codes:
         item_records = frappe.db.sql("""
             SELECT item_code, item_name, description, category, sub_category, image
@@ -369,6 +445,17 @@ def validate_purchase_excel(file_url=None):
             """, (tuple(existing_items_dict.keys()),), as_dict=True)
             for uc in uom_conversions:
                 existing_items_dict[uc.parent]['carton_packing'] = uc.conversion_factor
+
+        # Get existing prices from tabItem Price
+        price_records = frappe.db.sql("""
+            SELECT item_code, price_list, price_list_rate
+            FROM `tabItem Price`
+            WHERE item_code IN %s AND price_list IN (%s, 'Wholesale', 'Retail')
+        """, (tuple(valid_codes), buying_pl), as_dict=True)
+        for pr in price_records:
+            if pr.item_code not in item_prices_map:
+                item_prices_map[pr.item_code] = {}
+            item_prices_map[pr.item_code][pr.price_list] = float(pr.price_list_rate)
 
     # Classify rows
     for r in rows_data:
@@ -393,12 +480,32 @@ def validate_purchase_excel(file_url=None):
         else:
             r['status'] = 'new_item'
 
+        # Populate current prices and calculate price change flags
+        if code in item_prices_map:
+            prices = item_prices_map[code]
+            r['current_purchase_rate'] = prices.get(buying_pl)
+            r['current_wholesale_rate'] = prices.get('Wholesale')
+            r['current_retail_rate'] = prices.get('Retail')
+
+        if r['purchase_rate'] is not None:
+            if r['current_purchase_rate'] is None or abs(float(r['current_purchase_rate']) - float(r['purchase_rate'])) > 0.0001:
+                r['purchase_rate_changed'] = True
+
+        if r['wholesale_rate'] is not None:
+            if r['current_wholesale_rate'] is None or abs(float(r['current_wholesale_rate']) - float(r['wholesale_rate'])) > 0.0001:
+                r['wholesale_rate_changed'] = True
+
+        if r['retail_rate'] is not None:
+            if r['current_retail_rate'] is None or abs(float(r['current_retail_rate']) - float(r['retail_rate'])) > 0.0001:
+                r['retail_rate_changed'] = True
+
     summary = {
         'total_rows': len(rows_data),
         'existing_match': sum(1 for r in rows_data if r['status'] == 'existing_match'),
         'existing_mismatch': sum(1 for r in rows_data if r['status'] == 'existing_mismatch'),
         'new_items': sum(1 for r in rows_data if r['status'] == 'new_item'),
         'invalid': sum(1 for r in rows_data if r['status'] == 'invalid'),
+        'price_changes': sum(1 for r in rows_data if r.get('purchase_rate_changed') or r.get('wholesale_rate_changed') or r.get('retail_rate_changed')),
     }
 
     return {
@@ -497,6 +604,37 @@ def create_missing_items(items):
                 except Exception as img_err:
                     frappe.log_error(f"Image attachment error for {item_code}: {str(img_err)}")
 
+            # Create Item Prices if rates are provided (> 0)
+            purchase_rate = item_data.get('purchase_rate')
+            wholesale_rate = item_data.get('wholesale_rate')
+            retail_rate = item_data.get('retail_rate')
+
+            buying_pl = frappe.db.get_value("Price List", {"buying": 1}, "name") or "Standard Buying"
+
+            if purchase_rate is not None and str(purchase_rate).strip() != '':
+                try:
+                    p_val = float(purchase_rate)
+                    if p_val > 0:
+                        set_price_record(item_code, buying_pl, p_val, buying=1, selling=0)
+                except (ValueError, TypeError):
+                    pass
+
+            if wholesale_rate is not None and str(wholesale_rate).strip() != '':
+                try:
+                    ws_val = float(wholesale_rate)
+                    if ws_val > 0:
+                        set_price_record(item_code, "Wholesale", ws_val, buying=0, selling=1)
+                except (ValueError, TypeError):
+                    pass
+
+            if retail_rate is not None and str(retail_rate).strip() != '':
+                try:
+                    rt_val = float(retail_rate)
+                    if rt_val > 0:
+                        set_price_record(item_code, "Retail", rt_val, buying=0, selling=1)
+                except (ValueError, TypeError):
+                    pass
+
             created.append({
                 'item_code': item_code,
                 'item_name': item_name,
@@ -513,6 +651,66 @@ def create_missing_items(items):
         'created': created,
         'failed': failed
     }
+
+@frappe.whitelist()
+def update_item_prices_from_import(items):
+    """
+    Updates or creates Item Price records for items imported via Purchase Excel Import.
+    Price lists:
+    - buying_pl (default 'Standard Buying') for purchase_rate
+    - 'Wholesale' for wholesale_rate
+    - 'Retail' for retail_rate
+    Empty, None, or zero rates are skipped and NOT updated.
+    """
+    frappe.only_for(["System Manager", "Item Manager", "Stock Manager", "Purchase Manager", "Purchase User"])
+
+    if isinstance(items, str):
+        items = json.loads(items)
+
+    if not items:
+        return {"success": True, "updated_count": 0}
+
+    buying_pl = frappe.db.get_value("Price List", {"buying": 1}, "name") or "Standard Buying"
+    
+    updated_count = 0
+    for itm in items:
+        item_code = itm.get('item_code')
+        if not item_code or not frappe.db.exists('Item', item_code):
+            continue
+
+        p_rate = itm.get('purchase_rate')
+        ws_rate = itm.get('wholesale_rate')
+        rt_rate = itm.get('retail_rate')
+
+        if p_rate is not None and str(p_rate).strip() != '':
+            try:
+                p_val = float(p_rate)
+                if p_val > 0:
+                    set_price_record(item_code, buying_pl, p_val, buying=1, selling=0)
+                    updated_count += 1
+            except (ValueError, TypeError):
+                pass
+
+        if ws_rate is not None and str(ws_rate).strip() != '':
+            try:
+                ws_val = float(ws_rate)
+                if ws_val > 0:
+                    set_price_record(item_code, "Wholesale", ws_val, buying=0, selling=1)
+                    updated_count += 1
+            except (ValueError, TypeError):
+                pass
+
+        if rt_rate is not None and str(rt_rate).strip() != '':
+            try:
+                rt_val = float(rt_rate)
+                if rt_val > 0:
+                    set_price_record(item_code, "Retail", rt_val, buying=0, selling=1)
+                    updated_count += 1
+            except (ValueError, TypeError):
+                pass
+
+    frappe.db.commit()
+    return {"success": True, "updated_count": updated_count}
 
 @frappe.whitelist()
 def update_item_carton_qty(item_code, new_carton_qty):
