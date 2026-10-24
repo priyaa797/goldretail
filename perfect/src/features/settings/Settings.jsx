@@ -29,7 +29,7 @@ export default function Settings() {
   const colorVariant = customizer.activeTheme;
 
   const [killImageUrl, setKillImageUrl] = useState("https://i.ytimg.com/vi/ivKX1NzyHII/maxresdefault.jpg");
-  const [killRedirectUrl, setKillRedirectUrl] = useState("www.google.com");
+  const [killRedirectUrl, setKillRedirectUrl] = useState("https://www.google.com");
   const { data: systemStatus } = useFrappeGetCall('goldretail.api.system.get_system_status', null, 'system_status_settings');
   const { call: triggerKillSwitch, loading: isKilling } = useFrappePostCall('goldretail.api.system.trigger_kill_switch');
   const { call: saveThemeAPI } = useFrappePostCall('goldretail.api.system.save_user_theme');
