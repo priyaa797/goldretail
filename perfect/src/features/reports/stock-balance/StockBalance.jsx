@@ -339,19 +339,18 @@ export default function StockBalance() {
                 <TableCell><Typography variant="subtitle2" fontWeight={600}>Image</Typography></TableCell>
                 <TableCell><Typography variant="subtitle2" fontWeight={600}>Item Code</Typography></TableCell>
                 <TableCell><Typography variant="subtitle2" fontWeight={600}>Item Name</Typography></TableCell>
-                <TableCell><Typography variant="subtitle2" fontWeight={600}>Description</Typography></TableCell>
+                <TableCell align="right"><Typography variant="subtitle2" fontWeight={600}>Balance Carton</Typography></TableCell>
                 <TableCell><Typography variant="subtitle2" fontWeight={600}>Warehouse</Typography></TableCell>
                 <TableCell align="right"><Typography variant="subtitle2" fontWeight={600}>In Qty</Typography></TableCell>
                 <TableCell align="right"><Typography variant="subtitle2" fontWeight={600}>Out Qty</Typography></TableCell>
                 <TableCell align="right"><Typography variant="subtitle2" fontWeight={600}>Balance Qty</Typography></TableCell>
-                <TableCell align="right"><Typography variant="subtitle2" fontWeight={600}>Balance Carton</Typography></TableCell>
                 <TableCell align="right"><Typography variant="subtitle2" fontWeight={600}>Value (₹)</Typography></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {isLoading && (
                 <TableRow>
-                  <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
                     <CircularProgress size={28} />
                   </TableCell>
                 </TableRow>
@@ -375,18 +374,17 @@ export default function StockBalance() {
                   </TableCell>
                   <TableCell><Typography variant="subtitle2" fontWeight={700}>{row.item_code}</Typography></TableCell>
                   <TableCell><Typography variant="subtitle2" color="textSecondary">{row.item_name}</Typography></TableCell>
-                  <TableCell><Typography variant="subtitle2" color="textSecondary">{stripHtml(row.description)}</Typography></TableCell>
+                  <TableCell align="right"><Typography variant="subtitle2" color="textSecondary">{row.balance_carton != null ? row.balance_carton : '—'}</Typography></TableCell>
                   <TableCell><Typography variant="subtitle2" color="textSecondary">{row.warehouse}</Typography></TableCell>
                   <TableCell align="right"><Typography variant="subtitle2" color="textSecondary">{row.in_qty}</Typography></TableCell>
                   <TableCell align="right"><Typography variant="subtitle2" color="textSecondary">{row.out_qty}</Typography></TableCell>
                   <TableCell align="right"><Typography variant="subtitle2" color="textSecondary">{row.actual_qty}</Typography></TableCell>
-                  <TableCell align="right"><Typography variant="subtitle2" color="textSecondary">{row.balance_carton != null ? row.balance_carton : '—'}</Typography></TableCell>
                   <TableCell align="right"><Typography variant="subtitle2" color="textSecondary">{row.stock_value}</Typography></TableCell>
                 </TableRow>
               ))}
               {rows.length === 0 && !isLoading && (
                 <TableRow>
-                  <TableCell colSpan={10} align="center">
+                  <TableCell colSpan={9} align="center">
                     <Typography variant="subtitle2" py={3}>No stock balance data available</Typography>
                   </TableCell>
                 </TableRow>

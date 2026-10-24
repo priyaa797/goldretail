@@ -194,28 +194,25 @@ def export_stock_balance(file_format="excel", warehouse=None, item=None, show_ze
     headers = [
         "Item code",
         "Item name",
-        "Description",
+        "Balance carton",
         "Warehouse",
         "In qty",
         "Out qty",
-        "Balance qty",
-        "Balance carton"
+        "Balance qty"
     ]
 
     export_rows = []
     for r in data:
-        desc = strip_html(r.get("description") or "").strip()
         balance_carton = r.get("balance_carton")
         carton_val = float(balance_carton) if balance_carton is not None else ""
         export_rows.append([
             r.get("item_code") or "",
             r.get("item_name") or "",
-            desc,
+            carton_val,
             r.get("warehouse") or "",
             float(r.get("in_qty") or 0),
             float(r.get("out_qty") or 0),
-            float(r.get("actual_qty") or 0),
-            carton_val
+            float(r.get("actual_qty") or 0)
         ])
 
     file_format = (file_format or "excel").lower()
@@ -249,17 +246,16 @@ def generate_stock_balance_pdf_html(headers, rows, warehouse=None, category=None
 
     table_rows = []
     for r in rows:
-        carton_display = f"{r[7]:.2f}" if isinstance(r[7], (int, float)) else (str(r[7]) if r[7] else "-")
+        carton_display = f"{r[2]:.2f}" if isinstance(r[2], (int, float)) else (str(r[2]) if r[2] else "-")
         table_rows.append(f"""
             <tr>
                 <td style="border: 1px solid #ddd; padding: 4px 6px; font-size: 10px; font-weight: bold;">{r[0]}</td>
                 <td style="border: 1px solid #ddd; padding: 4px 6px; font-size: 10px;">{r[1]}</td>
-                <td style="border: 1px solid #ddd; padding: 4px 6px; font-size: 9px; color: #555;">{r[2]}</td>
+                <td style="border: 1px solid #ddd; padding: 4px 6px; font-size: 10px; text-align: right; font-weight: bold;">{carton_display}</td>
                 <td style="border: 1px solid #ddd; padding: 4px 6px; font-size: 10px;">{r[3]}</td>
                 <td style="border: 1px solid #ddd; padding: 4px 6px; font-size: 10px; text-align: right;">{r[4]:,.2f}</td>
                 <td style="border: 1px solid #ddd; padding: 4px 6px; font-size: 10px; text-align: right;">{r[5]:,.2f}</td>
                 <td style="border: 1px solid #ddd; padding: 4px 6px; font-size: 10px; text-align: right; font-weight: bold;">{r[6]:,.2f}</td>
-                <td style="border: 1px solid #ddd; padding: 4px 6px; font-size: 10px; text-align: right;">{carton_display}</td>
             </tr>
         """)
 
@@ -335,14 +331,13 @@ def generate_stock_balance_pdf_html(headers, rows, warehouse=None, category=None
         <table>
             <thead>
                 <tr>
-                    <th style="width: 12%;">Item Code</th>
-                    <th style="width: 20%;">Item Name</th>
-                    <th style="width: 26%;">Description</th>
-                    <th style="width: 14%;">Warehouse</th>
-                    <th class="right" style="width: 7%;">In Qty</th>
-                    <th class="right" style="width: 7%;">Out Qty</th>
-                    <th class="right" style="width: 7%;">Balance Qty</th>
-                    <th class="right" style="width: 7%;">Balance Carton</th>
+                    <th style="width: 16%;">Item Code</th>
+                    <th style="width: 28%;">Item Name</th>
+                    <th class="right" style="width: 14%;">Balance Carton</th>
+                    <th style="width: 18%;">Warehouse</th>
+                    <th class="right" style="width: 8%;">In Qty</th>
+                    <th class="right" style="width: 8%;">Out Qty</th>
+                    <th class="right" style="width: 8%;">Balance Qty</th>
                 </tr>
             </thead>
             <tbody>
