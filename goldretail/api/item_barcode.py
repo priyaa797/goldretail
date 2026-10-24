@@ -88,7 +88,10 @@ def get_item_by_barcode(barcode_val):
     
     # Fetch tax
     gst_percent = 0.0
-    item_tax = frappe.db.get_value('Item Tax', {'parent': item.name}, 'item_tax_template')
+    item_tax = frappe.db.get_value('Item Tax', {'parent': item.name, 'parenttype': 'Item'}, 'item_tax_template')
+    if not item_tax and item.get('gst_hsn_code'):
+        item_tax = frappe.db.get_value('Item Tax', {'parent': item.gst_hsn_code, 'parenttype': 'GST HSN Code'}, 'item_tax_template')
+
     if item_tax:
         templates = frappe.get_all('Item Tax Template Detail', filters={'parent': item_tax}, fields=['tax_type', 'tax_rate'])
         for t in templates:
@@ -106,6 +109,7 @@ def get_item_by_barcode(barcode_val):
     return {
         "item_code": item.item_code,
         "item_name": item.item_name,
+        "gst_hsn_code": item.get('gst_hsn_code'),
         "uom": item.stock_uom,
         "rate": 0,
         "gst_percentage": gst_percent,
@@ -115,13 +119,17 @@ def get_item_by_barcode(barcode_val):
 
 @frappe.whitelist()
 def get_all_items():
-    items = frappe.get_all('Item', fields=['name', 'item_code', 'item_name', 'description', 'standard_rate', 'weight_per_unit'])
+    items = frappe.get_all('Item', fields=['name', 'item_code', 'item_name', 'description', 'standard_rate', 'weight_per_unit', 'gst_hsn_code'])
     
     # Pre-fetch item taxes to optimize
-    item_taxes = frappe.get_all('Item Tax', fields=['parent', 'item_tax_template'])
-    tax_map = {}
+    item_taxes = frappe.get_all('Item Tax', fields=['parent', 'parenttype', 'item_tax_template'])
+    item_tax_map = {}
+    hsn_tax_map = {}
     for t in item_taxes:
-        tax_map[t.parent] = t.item_tax_template
+        if t.get('parenttype') == 'GST HSN Code':
+            hsn_tax_map[t.parent] = t.item_tax_template
+        else:
+            item_tax_map[t.parent] = t.item_tax_template
         
     template_rates = {}
     templates = frappe.get_all('Item Tax Template Detail', fields=['parent', 'tax_type', 'tax_rate'])
@@ -134,7 +142,11 @@ def get_all_items():
     packing_map = {u.parent: u.conversion_factor for u in uom_conversions}
             
     for item in items:
-        template = tax_map.get(item.name)
+        # Check Item-specific tax template first; if not found, fallback to HSN tax template
+        template = item_tax_map.get(item.name)
+        if not template and item.get('gst_hsn_code'):
+            template = hsn_tax_map.get(item.gst_hsn_code)
+
         item['gst_percentage'] = template_rates.get(template, 0.0) if template else 0.0
         item['packing_from_item'] = packing_map.get(item.name, '')
         
