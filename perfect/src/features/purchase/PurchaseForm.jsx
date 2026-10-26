@@ -124,11 +124,11 @@ export default function PurchaseForm() {
           warehouse: `NEW - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`
         };
       }),
-      taxes_and_charges: `Input GST In-state - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`,
-      taxes: [
-        { charge_type: 'On Net Total', account_head: `Input Tax CGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`, description: `Input Tax CGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}` },
-        { charge_type: 'On Net Total', account_head: `Input Tax SGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`, description: `Input Tax SGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}` }
-      ],
+      // taxes_and_charges: `Input GST In-state - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`,
+      // taxes: [
+      //   { charge_type: 'On Net Total', account_head: `Input Tax CGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`, description: `Input Tax CGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}` },
+      //   { charge_type: 'On Net Total', account_head: `Input Tax SGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`, description: `Input Tax SGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}` }
+      // ],
       update_stock: 1, // Crucial for our simplified workflow
       docstatus: 1 // Try to submit immediately
     };
