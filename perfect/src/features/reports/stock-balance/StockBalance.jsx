@@ -96,7 +96,14 @@ export default function StockBalance() {
 
   useEffect(() => {
     if (reportData && reportData.message) {
-      setRows(reportData.message);
+      const sorted = [...reportData.message].sort((a, b) => {
+        const codeA = (a.item_code || '').trim().toLowerCase();
+        const codeB = (b.item_code || '').trim().toLowerCase();
+        if (codeA < codeB) return -1;
+        if (codeA > codeB) return 1;
+        return (a.warehouse || '').localeCompare(b.warehouse || '');
+      });
+      setRows(sorted);
     } else {
       setRows([]);
     }

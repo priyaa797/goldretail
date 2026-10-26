@@ -119,6 +119,12 @@ def get_stock_balance(warehouse=None, item=None, show_zero_balance=0, category=N
             "balance_carton": balance_carton,
         })
 
+    # Sort results by item_code (item id)
+    results.sort(key=lambda x: (
+        (x.get("item_code") or "").strip().lower(),
+        (x.get("warehouse") or "").strip().lower()
+    ))
+
     return results
 
 @frappe.whitelist()
@@ -187,6 +193,12 @@ def export_stock_balance(file_format="excel", warehouse=None, item=None, show_ze
         type=type,
         item_type=item_type
     )
+
+    # Ensure data is sorted by item_code (item id)
+    data.sort(key=lambda x: (
+        (x.get("item_code") or "").strip().lower(),
+        (x.get("warehouse") or "").strip().lower()
+    ))
 
     date_str = now_datetime().strftime("%d%b%Y").lower()
     filename = f"stock balance {date_str}"
