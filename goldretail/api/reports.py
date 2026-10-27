@@ -72,31 +72,40 @@ def get_stock_balance(warehouse=None, item=None, show_zero_balance=0, category=N
 
     # Fetch latest Stock Reconciliation for each item & warehouse (if any)
     # A Stock Reconciliation resets the stock history; calculation begins from the latest reconciliation!
-    latest_recos = frappe.db.sql("""
-        SELECT 
-            sle.item_code,
-            sle.warehouse,
-            sle.qty_after_transaction as reco_qty,
-            sle.posting_datetime as reco_datetime,
-            sle.creation as reco_creation
-        FROM `tabStock Ledger Entry` sle
-        INNER JOIN (
-            SELECT item_code, warehouse, MAX(posting_datetime) as max_pdt, MAX(creation) as max_cr
+    sle_conditions = ["is_cancelled = 0"]
+    sle_params = {}
+    if warehouse:
+        sle_conditions.append("warehouse = %(warehouse)s")
+        sle_params["warehouse"] = warehouse
+    if item:
+        sle_conditions.append("item_code = %(item)s")
+        sle_params["item"] = item
+    elif filtered_item_codes is not None:
+        sle_conditions.append("item_code IN %(item_codes)s")
+        sle_params["item_codes"] = tuple(filtered_item_codes)
+
+    reco_where = " AND ".join(sle_conditions + ["voucher_type = 'Stock Reconciliation'"])
+    latest_recos = frappe.db.sql(f"""
+        SELECT item_code, warehouse, qty_after_transaction as reco_qty, posting_datetime as reco_datetime, creation as reco_creation
+        FROM (
+            SELECT 
+                item_code, 
+                warehouse, 
+                qty_after_transaction, 
+                posting_datetime, 
+                creation,
+                ROW_NUMBER() OVER (PARTITION BY item_code, warehouse ORDER BY posting_datetime DESC, creation DESC) as rn
             FROM `tabStock Ledger Entry`
-            WHERE voucher_type = 'Stock Reconciliation' AND is_cancelled = 0
-            GROUP BY item_code, warehouse
-        ) lr ON sle.item_code = lr.item_code 
-            AND sle.warehouse = lr.warehouse 
-            AND sle.posting_datetime = lr.max_pdt
-            AND sle.creation = lr.max_cr
-            AND sle.voucher_type = 'Stock Reconciliation'
-            AND sle.is_cancelled = 0
-    """, as_dict=True)
+            WHERE {reco_where}
+        ) t
+        WHERE rn = 1
+    """, sle_params, as_dict=True)
 
     reco_map = {f"{r.item_code}-{r.warehouse}": r for r in latest_recos}
 
     # Fetch all subsequent non-reconciliation transactions
-    sle_entries = frappe.db.sql("""
+    non_reco_where = " AND ".join(sle_conditions + ["voucher_type != 'Stock Reconciliation'"])
+    sle_entries = frappe.db.sql(f"""
         SELECT 
             item_code, 
             warehouse, 
@@ -104,8 +113,8 @@ def get_stock_balance(warehouse=None, item=None, show_zero_balance=0, category=N
             creation,
             actual_qty
         FROM `tabStock Ledger Entry`
-        WHERE is_cancelled = 0 AND voucher_type != 'Stock Reconciliation'
-    """, as_dict=True)
+        WHERE {non_reco_where}
+    """, sle_params, as_dict=True)
 
     sle_map = {}
     # Initialize items that have a Stock Reconciliation with the reconciled qty
