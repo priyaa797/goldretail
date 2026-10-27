@@ -33,9 +33,9 @@ export default function Login() {
   };
 
   return (
-    <BlankCard><Box  sx={{ p: 4, maxWidth: 400, width: '100%' }}>
+    <BlankCard><Box sx={{ p: 4, maxWidth: 400, width: '100%' }}>
       <Typography variant="h5" fontWeight="bold" gutterBottom>
-        Perfect
+        Prime Colours
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         Enter your details to sign in

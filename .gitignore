@@ -7,5 +7,6 @@ node_modules
 __pycache__
 goldretail/www/
 goldretail/public/frontend/
+goldretail/public/prime/
 # UI Kit Reference Repository
 ui_kit/

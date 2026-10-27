@@ -29,7 +29,7 @@ export default defineConfig({
 		}
 	},
 	build: {
-		outDir: '../goldretail/public/perfect',
+		outDir: '../goldretail/public/prime',
 		emptyOutDir: true,
 		target: 'es2015',
 		rollupOptions: {

@@ -64,7 +64,7 @@ const Register = () => (
       >
         <Box p={4}>
           <AuthRegister
-            title="Welcome to Perfect"
+            title="Welcome to Prime Colours"
             subtext={
               <Typography variant="subtitle1" color="textSecondary" mb={1}>
                 Your Admin Dashboard

@@ -261,4 +261,4 @@ doc_events = {
     }
 }
 
-website_route_rules = [{'from_route': '/perfect/<path:app_path>', 'to_route': 'perfect'},]
+website_route_rules = [{'from_route': '/prime/<path:app_path>', 'to_route': 'prime'},]

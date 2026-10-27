@@ -81,6 +81,6 @@ const Router = [
     ],
   },
 ];
-const router = createBrowserRouter(Router, { basename: '/perfect' });
+const router = createBrowserRouter(Router, { basename: '/prime' });
 
 export default router;

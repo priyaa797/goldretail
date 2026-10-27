@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build --base=/assets/goldretail/perfect/ && yarn copy-html-entry",
+    "build": "vite build --base=/assets/goldretail/prime/ && yarn copy-html-entry",
     "lint": "oxlint",
     "preview": "vite preview",
-    "copy-html-entry": "cp ../goldretail/public/perfect/index.html ../goldretail/www/perfect.html"
+    "copy-html-entry": "cp ../goldretail/public/prime/index.html ../goldretail/www/prime.html"
   },
   "dependencies": {
     "@casl/react": "^3.1.0",

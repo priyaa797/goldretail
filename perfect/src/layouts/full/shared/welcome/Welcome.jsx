@@ -37,7 +37,7 @@ const Welcome = () => {
           variant="filled"
           sx={{ width: '100%', color: 'white' }}
         >
-          <AlertTitle>Welcome To Perfect</AlertTitle>
+          <AlertTitle>Welcome To Prime Colours</AlertTitle>
           Crockeries Wholesaler..!!
         </Alert>
       </Snackbar>
