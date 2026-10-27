@@ -70,24 +70,72 @@ def get_stock_balance(warehouse=None, item=None, show_zero_balance=0, category=N
     )
     carton_factor_map = {u.parent: u.conversion_factor for u in uom_conversions}
 
-    # Fetch in/out quantities from Stock Ledger Entry
-    # SLE logs every transaction. actual_qty > 0 is incoming, actual_qty < 0 is outgoing.
-    sle_query = """
+    # Fetch latest Stock Reconciliation for each item & warehouse (if any)
+    # A Stock Reconciliation resets the stock history; calculation begins from the latest reconciliation!
+    latest_recos = frappe.db.sql("""
+        SELECT 
+            sle.item_code,
+            sle.warehouse,
+            sle.qty_after_transaction as reco_qty,
+            sle.posting_datetime as reco_datetime,
+            sle.creation as reco_creation
+        FROM `tabStock Ledger Entry` sle
+        INNER JOIN (
+            SELECT item_code, warehouse, MAX(posting_datetime) as max_pdt, MAX(creation) as max_cr
+            FROM `tabStock Ledger Entry`
+            WHERE voucher_type = 'Stock Reconciliation' AND is_cancelled = 0
+            GROUP BY item_code, warehouse
+        ) lr ON sle.item_code = lr.item_code 
+            AND sle.warehouse = lr.warehouse 
+            AND sle.posting_datetime = lr.max_pdt
+            AND sle.creation = lr.max_cr
+            AND sle.voucher_type = 'Stock Reconciliation'
+            AND sle.is_cancelled = 0
+    """, as_dict=True)
+
+    reco_map = {f"{r.item_code}-{r.warehouse}": r for r in latest_recos}
+
+    # Fetch all subsequent non-reconciliation transactions
+    sle_entries = frappe.db.sql("""
         SELECT 
             item_code, 
-            warehouse,
-            SUM(CASE WHEN actual_qty > 0 THEN actual_qty ELSE 0 END) as in_qty,
-            SUM(CASE WHEN actual_qty < 0 THEN ABS(actual_qty) ELSE 0 END) as out_qty
+            warehouse, 
+            posting_datetime,
+            creation,
+            actual_qty
         FROM `tabStock Ledger Entry`
-        WHERE is_cancelled = 0
-        GROUP BY item_code, warehouse
-    """
-    sle_data = frappe.db.sql(sle_query, as_dict=True)
-    
+        WHERE is_cancelled = 0 AND voucher_type != 'Stock Reconciliation'
+    """, as_dict=True)
+
     sle_map = {}
-    for row in sle_data:
-        key = f"{row.item_code}-{row.warehouse}"
-        sle_map[key] = row
+    # Initialize items that have a Stock Reconciliation with the reconciled qty
+    for key, r in reco_map.items():
+        sle_map[key] = {
+            "in_qty": float(r.reco_qty or 0),
+            "out_qty": 0.0
+        }
+
+    # Accumulate entries that occurred after the latest Stock Reconciliation
+    # (or all entries if no reconciliation exists for this item/warehouse)
+    for entry in sle_entries:
+        key = f"{entry.item_code}-{entry.warehouse}"
+        qty = float(entry.actual_qty or 0)
+        reco = reco_map.get(key)
+        if reco:
+            is_after = (
+                entry.posting_datetime > reco.reco_datetime or
+                (entry.posting_datetime == reco.reco_datetime and str(entry.creation) > str(reco.reco_creation))
+            )
+            if not is_after:
+                continue
+
+        if key not in sle_map:
+            sle_map[key] = {"in_qty": 0.0, "out_qty": 0.0}
+
+        if qty > 0:
+            sle_map[key]["in_qty"] += qty
+        elif qty < 0:
+            sle_map[key]["out_qty"] += abs(qty)
         
     # Merge data
     results = []
@@ -129,23 +177,51 @@ def get_stock_balance(warehouse=None, item=None, show_zero_balance=0, category=N
 
 @frappe.whitelist()
 def get_item_ledger(item_code, warehouse=None, page=1, page_size=20):
-    filters = {"item_code": item_code, "is_cancelled": 0}
-    if warehouse:
-        filters["warehouse"] = warehouse
-        
     page = frappe.utils.cint(page) or 1
     page_size = frappe.utils.cint(page_size) or 20
     limit_start = (page - 1) * page_size
-        
-    entries = frappe.get_all("Stock Ledger Entry", 
-                             filters=filters,
-                             fields=["posting_date", "posting_time", "voucher_type", "voucher_no", "actual_qty", "warehouse"],
-                             order_by="posting_date desc, posting_time desc",
-                             limit_start=limit_start,
-                             limit=page_size)
-                             
-    total_count = frappe.db.count("Stock Ledger Entry", filters=filters)
-                             
+
+    # Check if a Stock Reconciliation exists for this item & warehouse
+    # If so, find the latest Stock Reconciliation and start ledger history from there!
+    reco_wh_filter = "AND warehouse = %(warehouse)s" if warehouse else ""
+    params = {"item_code": item_code}
+    if warehouse:
+        params["warehouse"] = warehouse
+
+    latest_reco = frappe.db.sql(f"""
+        SELECT name, posting_datetime, creation
+        FROM `tabStock Ledger Entry`
+        WHERE item_code = %(item_code)s {reco_wh_filter}
+          AND voucher_type = 'Stock Reconciliation' AND is_cancelled = 0
+        ORDER BY posting_datetime DESC, creation DESC
+        LIMIT 1
+    """, params, as_dict=True)
+
+    conditions = ["item_code = %(item_code)s", "is_cancelled = 0"]
+    if warehouse:
+        conditions.append("warehouse = %(warehouse)s")
+
+    if latest_reco:
+        reco = latest_reco[0]
+        conditions.append("(posting_datetime > %(reco_dt)s OR (posting_datetime = %(reco_dt)s AND creation >= %(reco_cr)s))")
+        params["reco_dt"] = reco.posting_datetime
+        params["reco_cr"] = reco.creation
+
+    where_clause = " AND ".join(conditions)
+
+    total_count = frappe.db.sql(f"SELECT COUNT(*) FROM `tabStock Ledger Entry` WHERE {where_clause}", params)[0][0]
+
+    params["limit_start"] = limit_start
+    params["limit_page_size"] = page_size
+
+    entries = frappe.db.sql(f"""
+        SELECT posting_date, posting_time, voucher_type, voucher_no, actual_qty, warehouse, qty_after_transaction
+        FROM `tabStock Ledger Entry`
+        WHERE {where_clause}
+        ORDER BY posting_datetime DESC, creation DESC
+        LIMIT %(limit_start)s, %(limit_page_size)s
+    """, params, as_dict=True)
+
     results = []
     for e in entries:
         party = ""
@@ -159,17 +235,24 @@ def get_item_ledger(item_code, warehouse=None, page=1, page_size=20):
                     party = "Internal Transfer"
             except Exception:
                 pass
-                
+
+        if e.voucher_type == "Stock Reconciliation":
+            in_q = float(e.qty_after_transaction or e.actual_qty or 0)
+            out_q = 0.0
+        else:
+            in_q = float(e.actual_qty) if float(e.actual_qty or 0) > 0 else 0.0
+            out_q = abs(float(e.actual_qty)) if float(e.actual_qty or 0) < 0 else 0.0
+
         results.append({
             "posting_date": e.posting_date,
             "voucher_type": e.voucher_type,
             "voucher_no": e.voucher_no,
-            "in_qty": e.actual_qty if e.actual_qty > 0 else 0,
-            "out_qty": abs(e.actual_qty) if e.actual_qty < 0 else 0,
+            "in_qty": in_q,
+            "out_qty": out_q,
             "party": party or "-",
             "warehouse": e.warehouse
         })
-        
+
     return {
         "data": results,
         "total_count": total_count,
