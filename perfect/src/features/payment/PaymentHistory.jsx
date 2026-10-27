@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Button, Typography, Table, TableBody, TableCell, TableHead, TableRow, TableContainer } from '@mui/material';
+import { Box, Button, Typography, Table, TableBody, TableCell, TableHead, TableRow, TableContainer, Link } from '@mui/material';
 import BlankCard from '../../components/shared/BlankCard';
 
 import { useFrappeGetCall } from 'frappe-react-sdk';
@@ -74,7 +74,34 @@ export default function PaymentHistory() {
                       {row.date ? dayjs(row.date).format('DD MMM YYYY') : '-'}
                     </Typography>
                   </TableCell>
-                  <TableCell><Typography variant="subtitle2" fontWeight={600}>{row.reference}</Typography></TableCell>
+                  <TableCell>
+                    {(row.voucher_type === 'Sales Invoice' || (row.invoice_amount > 0 && !row.payment_amount)) ? (
+                      <Link
+                        href={`/prime/sales/${encodeURIComponent(row.reference)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        sx={{
+                          color: 'primary.main',
+                          fontWeight: 600,
+                          fontSize: '0.875rem',
+                          textDecoration: 'underline',
+                          textDecorationStyle: 'dotted',
+                          textUnderlineOffset: '3px',
+                          cursor: 'pointer',
+                          '&:hover': {
+                            color: 'primary.dark',
+                            textDecorationStyle: 'solid'
+                          }
+                        }}
+                      >
+                        {row.reference}
+                      </Link>
+                    ) : (
+                      <Typography variant="subtitle2" fontWeight={600}>
+                        {row.reference}
+                      </Typography>
+                    )}
+                  </TableCell>
                   <TableCell align="right">
                     <Typography variant="subtitle2" color="error.main" fontWeight={row.invoice_amount > 0 ? 600 : 400}>
                       {row.invoice_amount > 0 ? row.invoice_amount.toLocaleString() : '-'}

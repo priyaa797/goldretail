@@ -116,7 +116,8 @@ def get_customer_ledger(customer):
             posting_date as date, 
             name as reference,
             grand_total as invoice_amount, 
-            0 as payment_amount 
+            0 as payment_amount,
+            'Sales Invoice' as voucher_type
         FROM `tabSales Invoice` 
         WHERE docstatus = 1 AND customer = %s
 
@@ -126,7 +127,8 @@ def get_customer_ledger(customer):
             posting_date as date, 
             name as reference,
             0 as invoice_amount, 
-            paid_amount as payment_amount 
+            paid_amount as payment_amount,
+            'Payment Entry' as voucher_type
         FROM `tabPayment Entry` 
         WHERE docstatus = 1 AND party_type = 'Customer' AND party = %s
 
