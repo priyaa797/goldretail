@@ -204,13 +204,13 @@ def export_stock_balance(file_format="excel", warehouse=None, item=None, show_ze
     filename = f"stock balance {date_str}"
 
     headers = [
-        "Item code",
-        "Item name",
-        "Balance carton",
-        "Warehouse",
-        "In qty",
-        "Out qty",
-        "Balance qty"
+        "ITEM CODE",
+        "BALANCE CARTON",
+        "IN QTY",
+        "OUT QTY",
+        "BALANCE QTY",
+        "ITEM NAME",
+        "WAREHOUSE"
     ]
 
     export_rows = []
@@ -219,12 +219,12 @@ def export_stock_balance(file_format="excel", warehouse=None, item=None, show_ze
         carton_val = float(balance_carton) if balance_carton is not None else ""
         export_rows.append([
             r.get("item_code") or "",
-            r.get("item_name") or "",
             carton_val,
-            r.get("warehouse") or "",
             float(r.get("in_qty") or 0),
             float(r.get("out_qty") or 0),
-            float(r.get("actual_qty") or 0)
+            float(r.get("actual_qty") or 0),
+            r.get("item_name") or "",
+            r.get("warehouse") or ""
         ])
 
     file_format = (file_format or "excel").lower()
@@ -238,36 +238,38 @@ def export_stock_balance(file_format="excel", warehouse=None, item=None, show_ze
     elif file_format == "pdf":
         html = generate_stock_balance_pdf_html(headers, export_rows, warehouse, category, sub_category, type or item_type, date_str)
         frappe.response['filename'] = f"{filename}.pdf"
-        frappe.response['filecontent'] = get_pdf(html, {"orientation": "Landscape", "page-size": "A4"})
+        frappe.response['filecontent'] = get_pdf(html, {"orientation": "Portrait", "page-size": "A4"})
         frappe.response['type'] = 'binary'
     else:
         frappe.throw("Invalid format. Use 'excel' or 'pdf'.")
 
 
 def generate_stock_balance_pdf_html(headers, rows, warehouse=None, category=None, sub_category=None, item_type=None, date_str=""):
+    from frappe.utils import escape_html
+
     filters_desc = []
     if warehouse:
-        filters_desc.append(f"Warehouse: <b>{warehouse}</b>")
+        filters_desc.append(f"Warehouse: <b>{escape_html(warehouse)}</b>")
     if category:
-        filters_desc.append(f"Category: <b>{category}</b>")
+        filters_desc.append(f"Category: <b>{escape_html(category)}</b>")
     if sub_category:
-        filters_desc.append(f"Sub Category: <b>{sub_category}</b>")
+        filters_desc.append(f"Sub Category: <b>{escape_html(sub_category)}</b>")
     if item_type:
-        filters_desc.append(f"Type: <b>{item_type}</b>")
+        filters_desc.append(f"Type: <b>{escape_html(item_type)}</b>")
     filter_text = " | ".join(filters_desc) if filters_desc else "All Warehouses & Items"
 
     table_rows = []
     for r in rows:
-        carton_display = f"{r[2]:.2f}" if isinstance(r[2], (int, float)) else (str(r[2]) if r[2] else "-")
+        carton_display = f"{r[1]:.2f}" if isinstance(r[1], (int, float)) else (str(r[1]) if r[1] != "" and r[1] is not None else "-")
         table_rows.append(f"""
             <tr>
-                <td style="border: 1px solid #ddd; padding: 4px 6px; font-size: 10px; font-weight: bold;">{r[0]}</td>
-                <td style="border: 1px solid #ddd; padding: 4px 6px; font-size: 10px;">{r[1]}</td>
-                <td style="border: 1px solid #ddd; padding: 4px 6px; font-size: 10px; text-align: right; font-weight: bold;">{carton_display}</td>
-                <td style="border: 1px solid #ddd; padding: 4px 6px; font-size: 10px;">{r[3]}</td>
-                <td style="border: 1px solid #ddd; padding: 4px 6px; font-size: 10px; text-align: right;">{r[4]:,.2f}</td>
-                <td style="border: 1px solid #ddd; padding: 4px 6px; font-size: 10px; text-align: right;">{r[5]:,.2f}</td>
-                <td style="border: 1px solid #ddd; padding: 4px 6px; font-size: 10px; text-align: right; font-weight: bold;">{r[6]:,.2f}</td>
+                <td style="border: 1px solid #ddd; padding: 4px 5px; font-size: 8.5px; font-weight: bold; word-break: break-word;">{escape_html(str(r[0]))}</td>
+                <td style="border: 1px solid #ddd; padding: 4px 5px; font-size: 8.5px; text-align: right; font-weight: bold;">{carton_display}</td>
+                <td style="border: 1px solid #ddd; padding: 4px 5px; font-size: 8.5px; text-align: right;">{r[2]:,.2f}</td>
+                <td style="border: 1px solid #ddd; padding: 4px 5px; font-size: 8.5px; text-align: right;">{r[3]:,.2f}</td>
+                <td style="border: 1px solid #ddd; padding: 4px 5px; font-size: 8.5px; text-align: right; font-weight: bold;">{r[4]:,.2f}</td>
+                <td style="border: 1px solid #ddd; padding: 4px 5px; font-size: 8.5px; word-break: break-word;">{escape_html(str(r[5]))}</td>
+                <td style="border: 1px solid #ddd; padding: 4px 5px; font-size: 8.5px; word-break: break-word;">{escape_html(str(r[6]))}</td>
             </tr>
         """)
 
@@ -277,24 +279,28 @@ def generate_stock_balance_pdf_html(headers, rows, warehouse=None, category=None
     <head>
         <meta charset="utf-8">
         <style>
+            @page {{
+                size: A4 portrait;
+                margin: 8mm;
+            }}
             body {{
                 font-family: Arial, sans-serif;
-                margin: 10px;
+                margin: 0;
                 color: #333;
             }}
             .title {{
-                font-size: 16px;
+                font-size: 15px;
                 font-weight: bold;
                 text-transform: uppercase;
                 margin: 0;
             }}
             .filters {{
-                font-size: 10px;
+                font-size: 9px;
                 color: #555;
                 margin-top: 3px;
             }}
             .date {{
-                font-size: 10px;
+                font-size: 9.5px;
                 font-weight: bold;
                 text-align: right;
             }}
@@ -302,12 +308,23 @@ def generate_stock_balance_pdf_html(headers, rows, warehouse=None, category=None
                 width: 100%;
                 border-collapse: collapse;
                 margin-top: 8px;
+                page-break-inside: auto;
+            }}
+            tr {{
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }}
+            thead {{
+                display: table-header-group;
+            }}
+            tfoot {{
+                display: table-footer-group;
             }}
             th {{
                 background-color: #f1f3f5;
                 border: 1px solid #bbb;
-                padding: 5px 6px;
-                font-size: 9.5px;
+                padding: 5px 5px;
+                font-size: 8.5px;
                 font-weight: bold;
                 text-transform: uppercase;
                 text-align: left;
@@ -320,7 +337,7 @@ def generate_stock_balance_pdf_html(headers, rows, warehouse=None, category=None
             }}
             .footer {{
                 margin-top: 10px;
-                font-size: 9px;
+                font-size: 8.5px;
                 color: #777;
                 text-align: right;
             }}
@@ -335,7 +352,7 @@ def generate_stock_balance_pdf_html(headers, rows, warehouse=None, category=None
                 </td>
                 <td style="border: none; padding: 0; text-align: right; vertical-align: top;">
                     <div class="date">Date: {date_str}</div>
-                    <div style="font-size: 10px; color: #666;">Total Items: {len(rows)}</div>
+                    <div style="font-size: 9.5px; color: #666;">Total Items: {len(rows)}</div>
                 </td>
             </tr>
         </table>
@@ -343,13 +360,13 @@ def generate_stock_balance_pdf_html(headers, rows, warehouse=None, category=None
         <table>
             <thead>
                 <tr>
-                    <th style="width: 16%;">Item Code</th>
-                    <th style="width: 28%;">Item Name</th>
-                    <th class="right" style="width: 14%;">Balance Carton</th>
-                    <th style="width: 18%;">Warehouse</th>
-                    <th class="right" style="width: 8%;">In Qty</th>
-                    <th class="right" style="width: 8%;">Out Qty</th>
-                    <th class="right" style="width: 8%;">Balance Qty</th>
+                    <th style="width: 16%;">ITEM CODE</th>
+                    <th class="right" style="width: 12%;">BALANCE CARTON</th>
+                    <th class="right" style="width: 10%;">IN QTY</th>
+                    <th class="right" style="width: 10%;">OUT QTY</th>
+                    <th class="right" style="width: 11%;">BALANCE QTY</th>
+                    <th style="width: 26%;">ITEM NAME</th>
+                    <th style="width: 15%;">WAREHOUSE</th>
                 </tr>
             </thead>
             <tbody>
