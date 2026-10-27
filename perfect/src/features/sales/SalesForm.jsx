@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, Button, Typography, Grid, MenuItem, IconButton, Table, TableContainer, TableBody, TableCell, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, createFilterOptions, CircularProgress, Alert, Chip } from '@mui/material';
+import { Box, Button, Typography, Grid, MenuItem, IconButton, Table, TableContainer, TableBody, TableCell, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, createFilterOptions, CircularProgress, Alert, Chip, FormControlLabel } from '@mui/material';
 import BlankCard from '../../components/shared/BlankCard';
 
 import CustomTextField from '../../components/forms/theme-elements/CustomTextField';
+import CustomCheckbox from '../../components/forms/theme-elements/CustomCheckbox';
 
 import { useFrappePostCall, useFrappeGetDocList, useFrappeGetCall, useFrappeGetDoc } from 'frappe-react-sdk';
 import { useNavigate, useParams } from 'react-router';
@@ -29,6 +30,7 @@ export default function SalesForm() {
 
   const [customer, setCustomer] = useState('');
   const [priceList, setPriceList] = useState('Wholesale');
+  const [gstApplicable, setGstApplicable] = useState(true);
   const [items, setItems] = useState([{ item_code: '', item_name: '', description: '', qty: '', rate: 0, user_rate: '', carton: '', packing: '', total_weight: '', discount: '' }]);
   const [transportationCharges, setTransportationCharges] = useState('');
   const [packagingCharges, setPackagingCharges] = useState('');
@@ -96,6 +98,18 @@ export default function SalesForm() {
         setPackagingCharges(initialPackaging);
       }
 
+      // Check if GST is applicable on existing doc
+      const hasGst = Boolean(
+        existingDoc.taxes_and_charges ||
+        existingDoc.taxes?.some(t =>
+          t.account_head?.includes('CGST') ||
+          t.account_head?.includes('SGST') ||
+          t.account_head?.includes('IGST') ||
+          (t.charge_type === 'On Net Total' && !t.account_head?.includes('Transportation') && !t.account_head?.includes('Packaging'))
+        )
+      );
+      setGstApplicable(hasGst);
+
       // Populate items
       let loadedItems = [];
       if (existingDoc.items && existingDoc.items.length > 0) {
@@ -127,6 +141,7 @@ export default function SalesForm() {
       initialSnapshot.current = {
         customer: initialCust,
         priceList: initialPl,
+        gstApplicable: hasGst,
         driverName: (initialDriver || '').trim(),
         vehicleNo: (initialVehicle || '').trim(),
         transportationCharges: Number(initialTransport) || 0,
@@ -152,6 +167,7 @@ export default function SalesForm() {
 
     if ((customer || '').trim() !== (initialSnapshot.current.customer || '').trim()) return true;
     if ((priceList || 'Wholesale') !== (initialSnapshot.current.priceList || 'Wholesale')) return true;
+    if (gstApplicable !== Boolean(initialSnapshot.current.gstApplicable)) return true;
     if ((driverName || '').trim() !== (initialSnapshot.current.driverName || '').trim()) return true;
     if ((vehicleNo || '').trim() !== (initialSnapshot.current.vehicleNo || '').trim()) return true;
     if ((Number(transportationCharges) || 0) !== initialSnapshot.current.transportationCharges) return true;
@@ -278,6 +294,7 @@ export default function SalesForm() {
     if (!savedDraft) return;
     if (savedDraft.customer !== undefined) setCustomer(savedDraft.customer);
     if (savedDraft.priceList !== undefined) setPriceList(savedDraft.priceList);
+    if (savedDraft.gstApplicable !== undefined) setGstApplicable(savedDraft.gstApplicable);
     if (savedDraft.driverName !== undefined) setDriverName(savedDraft.driverName);
     if (savedDraft.vehicleNo !== undefined) setVehicleNo(savedDraft.vehicleNo);
     if (savedDraft.transportationCharges !== undefined) setTransportationCharges(savedDraft.transportationCharges);
@@ -323,6 +340,7 @@ export default function SalesForm() {
           timestamp: Date.now(),
           customer,
           priceList,
+          gstApplicable,
           driverName,
           vehicleNo,
           transportationCharges,
@@ -342,6 +360,7 @@ export default function SalesForm() {
     draftStorageKey,
     customer,
     priceList,
+    gstApplicable,
     driverName,
     vehicleNo,
     transportationCharges,
@@ -456,10 +475,14 @@ export default function SalesForm() {
           warehouse: `NEW - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`
         };
       }),
-      taxes_and_charges: existingDoc?.taxes_and_charges || `Output GST In-state - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`,
+      taxes_and_charges: gstApplicable
+        ? (existingDoc?.taxes_and_charges || `Output GST In-state - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`)
+        : '',
       taxes: [
-        { charge_type: 'On Net Total', account_head: `Output Tax CGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`, description: `Output Tax CGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}` },
-        { charge_type: 'On Net Total', account_head: `Output Tax SGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`, description: `Output Tax SGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}` },
+        ...(gstApplicable ? [
+          { charge_type: 'On Net Total', account_head: `Output Tax CGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`, description: `Output Tax CGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}` },
+          { charge_type: 'On Net Total', account_head: `Output Tax SGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`, description: `Output Tax SGST - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}` }
+        ] : []),
         ...(Number(transportationCharges) > 0 ? [{ charge_type: 'Actual', account_head: `Transportation Charges - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`, description: 'Transportation Charges', tax_amount: Number(transportationCharges) }] : []),
         ...(Number(packagingCharges) > 0 ? [{ charge_type: 'Actual', account_head: `Packaging Charges - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`, description: 'Packaging Charges', tax_amount: Number(packagingCharges) }] : [])
       ],
@@ -698,6 +721,18 @@ export default function SalesForm() {
               <MenuItem value="Wholesale">Wholesale</MenuItem>
               <MenuItem value="Retail">Retail</MenuItem>
             </CustomTextField>
+            <Box sx={{ mt: 1.5 }}>
+              <FormControlLabel
+                control={
+                  <CustomCheckbox
+                    checked={gstApplicable}
+                    onChange={(e) => setGstApplicable(e.target.checked)}
+                    color="primary"
+                  />
+                }
+                label={<Typography variant="subtitle2" fontWeight={600}>GST Applicable</Typography>}
+              />
+            </Box>
           </Grid>
         </Grid>
       </Box></BlankCard>
@@ -1011,34 +1046,36 @@ export default function SalesForm() {
           total += grossAmount;
           total_discount += discountAmt;
 
-          const gst_percentage = Number(item.gst_percentage) || 0;
-          if (gst_percentage > 0) {
-            const cgstRate = gst_percentage / 2;
-            const sgstRate = gst_percentage / 2;
-            const cgstAmt = taxableAmount * (cgstRate / 100);
-            const sgstAmt = taxableAmount * (sgstRate / 100);
-            const totalTax = cgstAmt + sgstAmt;
-            total_taxes += totalTax;
+          if (gstApplicable) {
+            const gst_percentage = Number(item.gst_percentage) || 0;
+            if (gst_percentage > 0) {
+              const cgstRate = gst_percentage / 2;
+              const sgstRate = gst_percentage / 2;
+              const cgstAmt = taxableAmount * (cgstRate / 100);
+              const sgstAmt = taxableAmount * (sgstRate / 100);
+              const totalTax = cgstAmt + sgstAmt;
+              total_taxes += totalTax;
 
-            if (!gstBreakup[gst_percentage]) {
-              gstBreakup[gst_percentage] = { taxable: 0, cgst: 0, sgst: 0, total_tax: 0 };
+              if (!gstBreakup[gst_percentage]) {
+                gstBreakup[gst_percentage] = { taxable: 0, cgst: 0, sgst: 0, total_tax: 0 };
+              }
+              gstBreakup[gst_percentage].taxable += taxableAmount;
+              gstBreakup[gst_percentage].cgst += cgstAmt;
+              gstBreakup[gst_percentage].sgst += sgstAmt;
+              gstBreakup[gst_percentage].total_tax += totalTax;
             }
-            gstBreakup[gst_percentage].taxable += taxableAmount;
-            gstBreakup[gst_percentage].cgst += cgstAmt;
-            gstBreakup[gst_percentage].sgst += sgstAmt;
-            gstBreakup[gst_percentage].total_tax += totalTax;
           }
         });
 
         const transportChargeVal = Number(transportationCharges) || 0;
         const packingChargeVal = Number(packagingCharges) || 0;
-        grand_total = total - total_discount + total_taxes + transportChargeVal + packingChargeVal;
+        grand_total = total - total_discount + (gstApplicable ? total_taxes : 0) + transportChargeVal + packingChargeVal;
         const rounded_total = Math.round(grand_total);
         const rounding_adjustment = rounded_total - grand_total;
 
         return (
           <>
-            {Object.keys(gstBreakup).length > 0 && (
+            {gstApplicable && Object.keys(gstBreakup).length > 0 && (
               <BlankCard><Box sx={{ mb: 4, overflow: 'hidden' }}>
                 <TableContainer>
                   <Table size="small">
@@ -1129,10 +1166,12 @@ export default function SalesForm() {
                         <Typography variant="body2" color="error.main">-₹{total_discount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
                       </Box>
                     )}
-                    <Box display="flex" justifyContent="space-between" mb={1}>
-                      <Typography variant="body2" color="text.secondary">Taxes</Typography>
-                      <Typography variant="body2">₹{total_taxes.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
-                    </Box>
+                    {gstApplicable && (
+                      <Box display="flex" justifyContent="space-between" mb={1}>
+                        <Typography variant="body2" color="text.secondary">Taxes</Typography>
+                        <Typography variant="body2">₹{total_taxes.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
+                      </Box>
+                    )}
                     {transportChargeVal > 0 && (
                       <Box display="flex" justifyContent="space-between" mb={1}>
                         <Typography variant="body2" color="text.secondary">Transportation Charges</Typography>

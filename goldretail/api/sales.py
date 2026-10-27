@@ -62,7 +62,7 @@ def save_sales_invoice(doc):
                 for tax in doc.get("taxes", []):
                     si.append("taxes", tax)
             if "taxes_and_charges" in doc:
-                si.taxes_and_charges = doc.get("taxes_and_charges")
+                si.taxes_and_charges = doc.get("taxes_and_charges") or None
 
             si.save()
             return si.as_dict()
