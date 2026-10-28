@@ -255,6 +255,12 @@ export default function SalesDetails() {
             .print-header-weight {
               text-align: right !important;
               white-space: nowrap !important;
+              line-height: 1.15 !important;
+            }
+            .print-header-weight > div {
+              margin: 0 0 3px 0 !important;
+              padding: 0 !important;
+              line-height: 1.15 !important;
             }
 
             /* Print footer & Terms */
@@ -615,6 +621,12 @@ export default function SalesDetails() {
                   <Box sx={{ width: { xs: '100%', md: '280px' } }}>
                     <Typography variant="subtitle1" fontWeight="bold" mb={2}>Transportation Details</Typography>
                     <Box display="flex" flexDirection="column" gap={1}>
+                      {doc.transporter && (
+                        <Box display="flex" justifyContent="space-between">
+                          <Typography variant="body2" color="text.secondary">Transporter:</Typography>
+                          <Typography variant="body2" fontWeight="500">{doc.transporter}</Typography>
+                        </Box>
+                      )}
                       <Box display="flex" justifyContent="space-between">
                         <Typography variant="body2" color="text.secondary">Driver Name:</Typography>
                         <Typography variant="body2" fontWeight="500">{doc.driver_name || '-'}</Typography>
@@ -750,12 +762,17 @@ export default function SalesDetails() {
             <div className="print-header-customer">
               <strong>Customer:</strong> {doc.customer_name || doc.customer}
             </div>
-            <div className="print-header-weight">
-              <div>
+            <div className="print-header-weight" style={{ lineHeight: 1.15 }}>
+              <div style={{ margin: 0, padding: 0, lineHeight: 1.15 }}>
                 <strong>Total Weight:</strong> {(doc.items?.reduce((acc, curr) => acc + (Number(curr.total_weight) || Number(curr.carton_weight) || 0), 0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kgs.
               </div>
+              {doc.transporter && (
+                <div style={{ margin: 0, padding: 0, lineHeight: 1.15 }}>
+                  <strong>Transporter:</strong> {doc.transporter}
+                </div>
+              )}
               {doc.vehicle_no && (
-                <div>
+                <div style={{ margin: 0, padding: 0, lineHeight: 1.15 }}>
                   <strong>Vehicle No:</strong> {doc.vehicle_no}
                 </div>
               )}

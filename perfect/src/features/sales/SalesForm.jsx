@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Box, Button, Typography, Grid, MenuItem, IconButton, Table, TableContainer, TableBody, TableCell, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, createFilterOptions, CircularProgress, Alert, Chip, FormControlLabel } from '@mui/material';
 import BlankCard from '../../components/shared/BlankCard';
 
@@ -30,10 +30,11 @@ export default function SalesForm() {
 
   const [customer, setCustomer] = useState('');
   const [priceList, setPriceList] = useState('Wholesale');
-  const [gstApplicable, setGstApplicable] = useState(true);
+  const [gstApplicable, setGstApplicable] = useState(false);
   const [items, setItems] = useState([{ item_code: '', item_name: '', description: '', qty: '', rate: 0, user_rate: '', carton: '', packing: '', total_weight: '', discount: '' }]);
   const [transportationCharges, setTransportationCharges] = useState('');
   const [packagingCharges, setPackagingCharges] = useState('');
+  const [transporter, setTransporter] = useState('');
   const [driverName, setDriverName] = useState('');
   const [vehicleNo, setVehicleNo] = useState('');
   const [docLoaded, setDocLoaded] = useState(false);
@@ -53,6 +54,17 @@ export default function SalesForm() {
 
   const { data: customers } = useFrappeGetDocList('Customer', { fields: ['name', 'customer_group', 'default_price_list'], limit: 10000 });
   const { data: customerGroups } = useFrappeGetDocList('Customer Group', { fields: ['name', 'default_price_list'], limit: 1000 });
+  const { data: rawTransporters } = useFrappeGetDocList('Supplier', {
+    fields: ['name', 'supplier_name', 'is_transporter'],
+    filters: [['is_transporter', '=', 1]],
+    limit: 1000
+  });
+
+  const transporters = useMemo(() => {
+    if (!rawTransporters) return [];
+    return rawTransporters.filter(t => t.is_transporter === 1 || t.is_transporter === true);
+  }, [rawTransporters]);
+
   const { data: itemListResponse } = useFrappeGetCall('goldretail.api.item_barcode.get_all_items');
   const itemList = itemListResponse?.message || [];
 
@@ -74,8 +86,10 @@ export default function SalesForm() {
       setCustomer(initialCust);
       setPriceList(initialPl);
 
+      const initialTransporter = existingDoc.transporter || '';
       const initialDriver = existingDoc.driver_name || '';
       const initialVehicle = existingDoc.vehicle_no || '';
+      setTransporter(initialTransporter);
       setDriverName(initialDriver);
       setVehicleNo(initialVehicle);
 
@@ -142,6 +156,7 @@ export default function SalesForm() {
         customer: initialCust,
         priceList: initialPl,
         gstApplicable: hasGst,
+        transporter: (initialTransporter || '').trim(),
         driverName: (initialDriver || '').trim(),
         vehicleNo: (initialVehicle || '').trim(),
         transportationCharges: Number(initialTransport) || 0,
@@ -168,6 +183,7 @@ export default function SalesForm() {
     if ((customer || '').trim() !== (initialSnapshot.current.customer || '').trim()) return true;
     if ((priceList || 'Wholesale') !== (initialSnapshot.current.priceList || 'Wholesale')) return true;
     if (gstApplicable !== Boolean(initialSnapshot.current.gstApplicable)) return true;
+    if ((transporter || '').trim() !== (initialSnapshot.current.transporter || '').trim()) return true;
     if ((driverName || '').trim() !== (initialSnapshot.current.driverName || '').trim()) return true;
     if ((vehicleNo || '').trim() !== (initialSnapshot.current.vehicleNo || '').trim()) return true;
     if ((Number(transportationCharges) || 0) !== initialSnapshot.current.transportationCharges) return true;
@@ -264,6 +280,7 @@ export default function SalesForm() {
         const hasData = Boolean(
           parsed.customer ||
           (parsed.items && parsed.items.some(i => i.item_code)) ||
+          parsed.transporter ||
           parsed.driverName ||
           parsed.vehicleNo
         );
@@ -295,6 +312,7 @@ export default function SalesForm() {
     if (savedDraft.customer !== undefined) setCustomer(savedDraft.customer);
     if (savedDraft.priceList !== undefined) setPriceList(savedDraft.priceList);
     if (savedDraft.gstApplicable !== undefined) setGstApplicable(savedDraft.gstApplicable);
+    if (savedDraft.transporter !== undefined) setTransporter(savedDraft.transporter);
     if (savedDraft.driverName !== undefined) setDriverName(savedDraft.driverName);
     if (savedDraft.vehicleNo !== undefined) setVehicleNo(savedDraft.vehicleNo);
     if (savedDraft.transportationCharges !== undefined) setTransportationCharges(savedDraft.transportationCharges);
@@ -326,6 +344,7 @@ export default function SalesForm() {
     const hasData = Boolean(
       customer ||
       (items && items.some(i => i.item_code)) ||
+      transporter ||
       driverName ||
       vehicleNo ||
       transportationCharges ||
@@ -341,6 +360,7 @@ export default function SalesForm() {
           customer,
           priceList,
           gstApplicable,
+          transporter,
           driverName,
           vehicleNo,
           transportationCharges,
@@ -361,6 +381,7 @@ export default function SalesForm() {
     customer,
     priceList,
     gstApplicable,
+    transporter,
     driverName,
     vehicleNo,
     transportationCharges,
@@ -443,6 +464,7 @@ export default function SalesForm() {
       doctype: 'Sales Invoice',
       customer,
       selling_price_list: priceList,
+      transporter: (transporter || '').trim(),
       driver_name: (driverName || '').trim(),
       vehicle_no: (vehicleNo || '').trim(),
       ...(isEditMode ? (
@@ -1138,6 +1160,21 @@ export default function SalesForm() {
                   <Box sx={{ width: { xs: '100%', md: '280px' } }}>
                     <Typography variant="subtitle1" fontWeight="bold" mb={2}>Transportation Details</Typography>
                     <Box display="flex" flexDirection="column" gap={2}>
+                      <Autocomplete
+                        options={transporters || []}
+                        getOptionLabel={(option) => typeof option === 'string' ? option : (option.supplier_name && option.supplier_name !== option.name ? `${option.supplier_name} (${option.name})` : option.name || '')}
+                        isOptionEqualToValue={(option, val) => option?.name === (typeof val === 'string' ? val : val?.name)}
+                        value={transporters?.find(t => t.name === transporter) || (transporter ? { name: transporter, supplier_name: transporter } : null)}
+                        onChange={(e, newValue) => setTransporter(newValue ? newValue.name : '')}
+                        renderInput={(params) => (
+                          <CustomTextField
+                            {...params}
+                            fullWidth
+                            label="Transporter"
+                            placeholder="Select Transporter..."
+                          />
+                        )}
+                      />
                       <CustomTextField
                         fullWidth
                         label="Driver Name"

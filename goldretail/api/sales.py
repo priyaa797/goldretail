@@ -47,6 +47,7 @@ def save_sales_invoice(doc):
         else:
             si.customer = doc.get("customer")
             si.selling_price_list = doc.get("selling_price_list") or "Wholesale"
+            si.transporter = (doc.get("transporter") or "").strip() or None
             si.driver_name = (doc.get("driver_name") or "").strip()
             si.vehicle_no = (doc.get("vehicle_no") or "").strip()
             si.update_stock = 1
