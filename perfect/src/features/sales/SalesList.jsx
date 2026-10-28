@@ -15,7 +15,7 @@ export default function SalesList() {
   const { data, isLoading } = useFrappeGetDocList('Sales Invoice', {
     filters: { "docstatus": ["!=", 2] },
     fields: ['name', 'customer', 'grand_total', 'posting_date', 'outstanding_amount', 'status', 'docstatus'],
-    orderBy: { field: 'creation', order: 'desc' },
+    orderBy: { field: 'name', order: 'desc' },
     limit: 10000
   });
 
@@ -28,10 +28,16 @@ export default function SalesList() {
     setPage(0);
   };
 
-  const paginatedData = useMemo(() => {
+  const sortedData = useMemo(() => {
     if (!data) return [];
-    return data.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
-  }, [data, page, rowsPerPage]);
+    return [...data].sort((a, b) => 
+      (b.name || '').localeCompare(a.name || '', undefined, { numeric: true, sensitivity: 'base' })
+    );
+  }, [data]);
+
+  const paginatedData = useMemo(() => {
+    return sortedData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  }, [sortedData, page, rowsPerPage]);
 
   return (
     <Box>
@@ -76,7 +82,7 @@ export default function SalesList() {
                   </TableCell>
                 </TableRow>
               ))}
-              {(!data || data.length === 0) && !isLoading && (
+              {sortedData.length === 0 && !isLoading && (
                 <TableRow>
                   <TableCell colSpan={6} align="center"><Typography variant="subtitle2" py={3}>No sales found</Typography></TableCell>
                 </TableRow>
@@ -87,7 +93,7 @@ export default function SalesList() {
         <TablePagination
           rowsPerPageOptions={[10, 20, 50, 100]}
           component="div"
-          count={data?.length || 0}
+          count={sortedData.length}
           rowsPerPage={rowsPerPage}
           page={page}
           onPageChange={handleChangePage}
