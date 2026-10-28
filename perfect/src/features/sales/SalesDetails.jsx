@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, Grid, CircularProgress, Chip, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
 import BlankCard from '../../components/shared/BlankCard';
+import ExpandableItemName from '../../components/shared/ExpandableItemName';
 import CustomTextField from '../../components/forms/theme-elements/CustomTextField';
 
 import { useParams, useNavigate } from 'react-router';
@@ -417,7 +418,9 @@ export default function SalesDetails() {
                         <Typography variant="body2" fontWeight="bold">{index + 1}</Typography>
                       </TableCell>
                       <TableCell sx={{ position: 'sticky', left: 60, bgcolor: 'background.paper', zIndex: 1, borderRight: '1px solid', borderColor: 'divider' }}>{item.item_code}</TableCell>
-                      <TableCell>{item.item_name}</TableCell>
+                      <TableCell sx={{ minWidth: 150, maxWidth: 260 }}>
+                        <ExpandableItemName text={item.item_name} />
+                      </TableCell>
                       <TableCell>
                         <Typography variant="body2" fontWeight="500">
                           {item.warehouse || '-'}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, Grid, CircularProgress, Chip } from '@mui/material';
 import BlankCard from '../../components/shared/BlankCard';
+import ExpandableItemName from '../../components/shared/ExpandableItemName';
 
 import { useParams, useNavigate } from 'react-router';
 import { useFrappeGetDoc } from 'frappe-react-sdk';
@@ -74,7 +75,7 @@ export default function PurchaseDetails() {
                 <TableCell sx={{ fontWeight: 600, width: 50 }}>S.No.</TableCell>
                 <TableCell sx={{ fontWeight: 600, minWidth: 200 }}>Item Code</TableCell>
                 <TableCell sx={{ fontWeight: 600, minWidth: 150 }}>Item Name</TableCell>
-                <TableCell sx={{ fontWeight: 600, minWidth: 200 }}>Description</TableCell>
+                <TableCell sx={{ fontWeight: 600, minWidth: 160 }}>Warehouse</TableCell>
                 <TableCell sx={{ fontWeight: 600, width: 100 }}>Carton</TableCell>
                 <TableCell sx={{ fontWeight: 600, width: 100 }}>Packing</TableCell>
                 <TableCell sx={{ fontWeight: 600, width: 120 }}>Quantity</TableCell>
@@ -107,10 +108,12 @@ export default function PurchaseDetails() {
                     <Typography variant="body2" fontWeight="bold">{index + 1}</Typography>
                   </TableCell>
                   <TableCell>{item.item_code}</TableCell>
-                  <TableCell>{item.item_name}</TableCell>
+                  <TableCell sx={{ minWidth: 150, maxWidth: 260 }}>
+                    <ExpandableItemName text={item.item_name} />
+                  </TableCell>
                   <TableCell>
-                    <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 200 }} title={item.description}>
-                      {item.description ? item.description.replace(/<[^>]*>?/gm, '') : '-'}
+                    <Typography variant="body2" fontWeight="500">
+                      {item.warehouse || '-'}
                     </Typography>
                   </TableCell>
                   <TableCell>{item.carton || '-'}</TableCell>

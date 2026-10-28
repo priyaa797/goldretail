@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Box, Button, Typography, Grid, MenuItem, IconButton, Table, TableBody, TableCell, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, createFilterOptions } from '@mui/material';
 import BlankCard from '../../components/shared/BlankCard';
+import ExpandableItemName from '../../components/shared/ExpandableItemName';
 
 import CustomTextField from '../../components/forms/theme-elements/CustomTextField';
 
@@ -19,7 +20,7 @@ export default function PurchaseForm() {
   const navigate = useNavigate();
   const [supplier, setSupplier] = useState('');
   const [billNo, setBillNo] = useState('');
-  const [items, setItems] = useState([{ item_code: '', item_name: '', description: '', qty: '', rate: 0, carton: '', packing: '', total_weight: '', discount: '' }]);
+  const [items, setItems] = useState([{ item_code: '', item_name: '', warehouse: '', qty: '', rate: 0, carton: '', packing: '', total_weight: '', discount: '' }]);
   const [openRowIndex, setOpenRowIndex] = useState(null);
   const focusRowIndexRef = useRef(null);
 
@@ -33,6 +34,49 @@ export default function PurchaseForm() {
     if (!rawSuppliers) return [];
     return rawSuppliers.filter(s => !s.is_transporter || Number(s.is_transporter) === 0);
   }, [rawSuppliers]);
+
+  const { data: rawWarehouses } = useFrappeGetDocList('Warehouse', {
+    fields: ['name', 'warehouse_name', 'is_group', 'disabled'],
+    filters: [
+      ['is_group', '=', 0],
+      ['disabled', '=', 0]
+    ],
+    orderBy: { field: 'name', order: 'asc' },
+    limit: 1000
+  });
+
+  const warehouses = useMemo(() => {
+    if (!rawWarehouses) return [];
+    return rawWarehouses.filter(w => !w.is_group && !w.disabled);
+  }, [rawWarehouses]);
+
+  const defaultWarehouse = warehouses[0]?.name || `NEW - ${import.meta.env.VITE_COMPANY_ABBR || 'PC'}`;
+
+  const { data: bins } = useFrappeGetDocList('Bin', {
+    fields: ['item_code', 'warehouse', 'actual_qty'],
+    limit: 100000
+  });
+
+  const binMap = useMemo(() => {
+    const map = {};
+    if (bins && bins.length) {
+      for (const b of bins) {
+        map[`${b.item_code}:::${b.warehouse}`] = Number(b.actual_qty) || 0;
+      }
+    }
+    return map;
+  }, [bins]);
+
+  useEffect(() => {
+    if (defaultWarehouse) {
+      setItems(prev => {
+        if (prev.length === 1 && !prev[0].item_code && !prev[0].warehouse) {
+          return [{ ...prev[0], warehouse: defaultWarehouse }];
+        }
+        return prev;
+      });
+    }
+  }, [defaultWarehouse]);
   const { data: itemListResponse, mutate: mutateItemList } = useFrappeGetCall('goldretail.api.item_barcode.get_all_items');
   const itemList = itemListResponse?.message || [];
 
@@ -84,7 +128,7 @@ export default function PurchaseForm() {
           const newItem = {
             item_code: itemData.item_code,
             item_name: fullItem?.item_name || itemData.item_name || '',
-            description: fullItem?.description || itemData.description || '',
+            warehouse: fullItem?.default_warehouse || defaultWarehouse || warehouses[0]?.name || '',
             qty: 1,
             rate: itemData.rate || 0
           };
@@ -126,11 +170,10 @@ export default function PurchaseForm() {
           qty: qty,
           price_list_rate: baseRate,
           discount_percentage: discountPercentage,
-          description: i.description,
           carton: Number(i.carton) || 0,
           packing: Number(i.packing) || 0,
           total_weight: Number(i.total_weight) || 0,
-          warehouse: `NEW - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`
+          warehouse: i.warehouse || defaultWarehouse || ''
         };
       }),
       // taxes_and_charges: `Input GST In-state - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`,
@@ -239,7 +282,10 @@ export default function PurchaseForm() {
 
     // Duplicate check: avoid adding items that are already in the items table
     const existingCodes = new Set(items.map(i => i.item_code).filter(Boolean));
-    const nonDuplicates = importedItems.filter(i => !existingCodes.has(i.item_code));
+    const nonDuplicates = importedItems.filter(i => !existingCodes.has(i.item_code)).map(i => ({
+      ...i,
+      warehouse: i.warehouse || defaultWarehouse || warehouses[0]?.name || ''
+    }));
 
     if (nonDuplicates.length === 0) {
       toast.error('All imported items are already added in the table.');
@@ -260,7 +306,7 @@ export default function PurchaseForm() {
     const newIndex = items.length;
     focusRowIndexRef.current = newIndex;
     setOpenRowIndex(newIndex);
-    setItems([...items, { item_code: '', item_name: '', description: '', qty: '', rate: 0, carton: '', packing: '', total_weight: '', discount: '', weight_per_unit: 0 }]);
+    setItems([...items, { item_code: '', item_name: '', warehouse: defaultWarehouse || warehouses[0]?.name || '', qty: '', rate: 0, carton: '', packing: '', total_weight: '', discount: '', weight_per_unit: 0 }]);
   };
   const removeItem = (index) => {
     if (openRowIndex === index) {
@@ -315,7 +361,9 @@ export default function PurchaseForm() {
         const newItems = [...items];
         newItems[activeRowIndex].item_code = newItemData.item_code;
         newItems[activeRowIndex].item_name = newItemData.item_name;
-        newItems[activeRowIndex].description = '';
+        if (!newItems[activeRowIndex].warehouse) {
+          newItems[activeRowIndex].warehouse = defaultWarehouse || warehouses[0]?.name || '';
+        }
         setItems(newItems);
       }
 
@@ -401,8 +449,8 @@ export default function PurchaseForm() {
             <TableRow>
               <TableCell sx={{ width: 50 }}>S.No.</TableCell>
               <TableCell sx={{ minWidth: 200 }}>Item Code</TableCell>
-              <TableCell sx={{ minWidth: 100 }}>Item Name</TableCell>
-              <TableCell sx={{ width: 250, minWidth: 250 }}>Description</TableCell>
+              <TableCell sx={{ minWidth: 150, maxWidth: 260 }}>Item Name</TableCell>
+              <TableCell sx={{ width: 170, minWidth: 170 }}>Warehouse</TableCell>
               <TableCell sx={{ width: 100 }}>Carton</TableCell>
               <TableCell sx={{ width: 100 }}>Packing</TableCell>
               <TableCell sx={{ width: 120 }}>Quantity</TableCell>
@@ -468,7 +516,9 @@ export default function PurchaseForm() {
                       if (newValue) {
                         newItems[idx].item_code = newValue.item_code;
                         newItems[idx].item_name = newValue.item_name;
-                        newItems[idx].description = newValue.description;
+                        if (!newItems[idx].warehouse) {
+                          newItems[idx].warehouse = defaultWarehouse || warehouses[0]?.name || '';
+                        }
                         newItems[idx].gst_percentage = newValue.gst_percentage || 0;
                         newItems[idx].packing = newValue.packing_from_item || '';
                         newItems[idx].weight_per_unit = newValue.weight_per_unit || 0;
@@ -478,7 +528,6 @@ export default function PurchaseForm() {
                       } else {
                         newItems[idx].item_code = '';
                         newItems[idx].item_name = '';
-                        newItems[idx].description = '';
                         newItems[idx].gst_percentage = 0;
                         newItems[idx].packing = '';
                         newItems[idx].weight_per_unit = 0;
@@ -514,15 +563,76 @@ export default function PurchaseForm() {
                     )}
                   />
                 </TableCell>
-                <TableCell>
-                  <Typography variant="body2">{item.item_name || '-'}</Typography>
+                <TableCell sx={{ minWidth: 150, maxWidth: 260, verticalAlign: 'top' }}>
+                  <ExpandableItemName text={item.item_name} />
                 </TableCell>
-                <TableCell>
-                  <CustomTextField size="small" multiline maxRows={4} placeholder="Description" value={item.description || ''} onChange={e => {
-                    const newItems = [...items];
-                    newItems[idx].description = e.target.value;
-                    setItems(newItems);
-                  }} />
+                <TableCell sx={{ minWidth: 170, width: 170, verticalAlign: 'top' }}>
+                  <CustomTextField
+                    select
+                    size="small"
+                    fullWidth
+                    value={item.warehouse || ''}
+                    onChange={e => {
+                      const val = e.target.value;
+                      const newItems = [...items];
+                      newItems[idx].warehouse = val;
+                      setItems(newItems);
+                    }}
+                    SelectProps={{
+                      displayEmpty: true,
+                      renderValue: (selected) => {
+                        if (!selected) return <span style={{ color: '#aaa' }}>Select Warehouse</span>;
+                        return selected;
+                      }
+                    }}
+                  >
+                    <MenuItem value="" disabled>
+                      <em>Select Warehouse</em>
+                    </MenuItem>
+                    {warehouses.map(wh => {
+                      const bal = item.item_code ? (binMap[`${item.item_code}:::${wh.name}`] ?? 0) : 0;
+                      return (
+                        <MenuItem key={wh.name} value={wh.name}>
+                          <Box display="flex" justifyContent="space-between" alignItems="center" width="100%" gap={2}>
+                            <Typography variant="body2">{wh.name}</Typography>
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                fontWeight: 600,
+                                color: item.item_code ? (bal > 0 ? 'success.main' : 'text.disabled') : 'text.disabled',
+                                bgcolor: item.item_code && bal > 0 ? 'success.lighter' : 'action.hover',
+                                px: 0.8,
+                                py: 0.2,
+                                borderRadius: 1
+                              }}
+                            >
+                              {item.item_code ? `Bal: ${bal}` : 'Bal: -'}
+                            </Typography>
+                          </Box>
+                        </MenuItem>
+                      );
+                    })}
+                  </CustomTextField>
+                  {item.warehouse && (
+                    <Box sx={{ mt: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Typography variant="caption" color="text.secondary">
+                        Bal Qty:
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        fontWeight="bold"
+                        color={
+                          !item.item_code
+                            ? 'text.secondary'
+                            : (binMap[`${item.item_code}:::${item.warehouse}`] ?? 0) > 0
+                            ? 'success.main'
+                            : 'error.main'
+                        }
+                      >
+                        {item.item_code ? (binMap[`${item.item_code}:::${item.warehouse}`] ?? 0) : '-'}
+                      </Typography>
+                    </Box>
+                  )}
                 </TableCell>
                 <TableCell>
                   <CustomTextField size="small" value={item.carton} disabled={!!item.qty && !item.carton} onChange={e => {

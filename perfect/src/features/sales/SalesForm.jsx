@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Box, Button, Typography, Grid, MenuItem, IconButton, Table, TableContainer, TableBody, TableCell, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, createFilterOptions, CircularProgress, Alert, Chip, FormControlLabel } from '@mui/material';
 import BlankCard from '../../components/shared/BlankCard';
+import ExpandableItemName from '../../components/shared/ExpandableItemName';
 
 import CustomTextField from '../../components/forms/theme-elements/CustomTextField';
 import CustomCheckbox from '../../components/forms/theme-elements/CustomCheckbox';
@@ -825,7 +826,7 @@ export default function SalesForm() {
               <TableRow>
                 <TableCell sx={{ width: 60, minWidth: 60, position: 'sticky', left: 0, bgcolor: 'background.paper', zIndex: 2 }}>#</TableCell>
                 <TableCell sx={{ width: 185, minWidth: 185, position: 'sticky', left: 60, bgcolor: 'background.paper', zIndex: 2, borderRight: '1px solid', borderColor: 'divider' }}>Item Code</TableCell>
-                <TableCell sx={{ minWidth: 80 }}>Item Name</TableCell>
+                <TableCell sx={{ minWidth: 160, maxWidth: 260 }}>Item Name</TableCell>
                 <TableCell sx={{ width: 170, minWidth: 170 }}>Warehouse</TableCell>
                 <TableCell sx={{ width: 100 }}>Carton</TableCell>
                 <TableCell sx={{ width: 100 }}>Packing</TableCell>
@@ -944,8 +945,8 @@ export default function SalesForm() {
                         )}
                       />
                     </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{item.item_name || '-'}</Typography>
+                    <TableCell sx={{ minWidth: 160, maxWidth: 260, verticalAlign: 'top' }}>
+                      <ExpandableItemName text={item.item_name} />
                     </TableCell>
                     <TableCell sx={{ minWidth: 170, width: 170, verticalAlign: 'top' }}>
                       <CustomTextField
