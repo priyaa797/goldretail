@@ -30,6 +30,7 @@ export default function SalesForm() {
   const draftStorageKey = isEditMode ? `${DRAFT_KEY_PREFIX}${id}` : `${DRAFT_KEY_PREFIX}new`;
 
   const [customer, setCustomer] = useState('');
+  const [dueDate, setDueDate] = useState(() => dayjs().add(1, 'month').format('YYYY-MM-DD'));
   const [priceList, setPriceList] = useState('Wholesale');
   const [gstApplicable, setGstApplicable] = useState(false);
   const [items, setItems] = useState([{ item_code: '', item_name: '', warehouse: '', qty: '', rate: 0, user_rate: '', carton: '', packing: '', total_weight: '', discount: '' }]);
@@ -130,8 +131,10 @@ export default function SalesForm() {
   useEffect(() => {
     if (isEditMode && existingDoc && !docLoaded) {
       const initialCust = existingDoc.customer || '';
+      const initialDueDate = existingDoc.due_date || (existingDoc.posting_date ? dayjs(existingDoc.posting_date).add(1, 'month').format('YYYY-MM-DD') : dayjs().add(1, 'month').format('YYYY-MM-DD'));
       const initialPl = existingDoc.selling_price_list || 'Wholesale';
       setCustomer(initialCust);
+      setDueDate(initialDueDate);
       setPriceList(initialPl);
 
       const initialTransporter = existingDoc.transporter || '';
@@ -202,6 +205,7 @@ export default function SalesForm() {
 
       initialSnapshot.current = {
         customer: initialCust,
+        dueDate: initialDueDate,
         priceList: initialPl,
         gstApplicable: hasGst,
         transporter: (initialTransporter || '').trim(),
@@ -229,6 +233,7 @@ export default function SalesForm() {
     if (!initialSnapshot.current) return false;
 
     if ((customer || '').trim() !== (initialSnapshot.current.customer || '').trim()) return true;
+    if ((dueDate || '') !== (initialSnapshot.current.dueDate || '')) return true;
     if ((priceList || 'Wholesale') !== (initialSnapshot.current.priceList || 'Wholesale')) return true;
     if (gstApplicable !== Boolean(initialSnapshot.current.gstApplicable)) return true;
     if ((transporter || '').trim() !== (initialSnapshot.current.transporter || '').trim()) return true;
@@ -358,6 +363,7 @@ export default function SalesForm() {
   const handleRestoreDraft = () => {
     if (!savedDraft) return;
     if (savedDraft.customer !== undefined) setCustomer(savedDraft.customer);
+    if (savedDraft.dueDate !== undefined) setDueDate(savedDraft.dueDate);
     if (savedDraft.priceList !== undefined) setPriceList(savedDraft.priceList);
     if (savedDraft.gstApplicable !== undefined) setGstApplicable(savedDraft.gstApplicable);
     if (savedDraft.transporter !== undefined) setTransporter(savedDraft.transporter);
@@ -406,6 +412,7 @@ export default function SalesForm() {
         const draftPayload = {
           timestamp: Date.now(),
           customer,
+          dueDate,
           priceList,
           gstApplicable,
           transporter,
@@ -511,6 +518,7 @@ export default function SalesForm() {
     const doc = {
       doctype: 'Sales Invoice',
       customer,
+      due_date: dueDate || dayjs().add(1, 'month').format('YYYY-MM-DD'),
       selling_price_list: priceList,
       transporter: (transporter || '').trim(),
       driver_name: (driverName || '').trim(),
@@ -747,7 +755,7 @@ export default function SalesForm() {
 
       <BlankCard><Box sx={{ p: 3, mb: 3 }}>
         <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} md={4}>
             <Autocomplete
               options={customers || []}
               getOptionLabel={(option) => option.name || ''}
@@ -779,7 +787,17 @@ export default function SalesForm() {
               )}
             />
           </Grid>
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} md={4}>
+            <CustomTextField
+              fullWidth
+              type="date"
+              label="Payment Due Date"
+              value={dueDate}
+              onChange={e => setDueDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
             <CustomTextField
               select
               fullWidth

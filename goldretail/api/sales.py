@@ -24,6 +24,8 @@ def save_sales_invoice(doc):
         doc_dict["amended_from"] = amended_from
         doc_dict["docstatus"] = 0
         doc_dict["update_stock"] = 1
+        if not doc_dict.get("due_date"):
+            doc_dict["due_date"] = frappe.utils.add_months(doc_dict.get("posting_date") or frappe.utils.nowdate(), 1)
         new_si = frappe.get_doc(doc_dict)
         new_si.insert()
         return new_si.as_dict()
@@ -39,6 +41,8 @@ def save_sales_invoice(doc):
             doc_dict["amended_from"] = orig.name
             doc_dict["docstatus"] = 0
             doc_dict["update_stock"] = 1
+            if not doc_dict.get("due_date"):
+                doc_dict["due_date"] = frappe.utils.add_months(doc_dict.get("posting_date") or frappe.utils.nowdate(), 1)
             new_si = frappe.get_doc(doc_dict)
             new_si.insert()
             return new_si.as_dict()
@@ -47,6 +51,10 @@ def save_sales_invoice(doc):
         else:
             si.customer = doc.get("customer")
             si.selling_price_list = doc.get("selling_price_list") or "Wholesale"
+            if doc.get("due_date"):
+                si.due_date = doc.get("due_date")
+            elif not si.due_date:
+                si.due_date = frappe.utils.add_months(si.posting_date or frappe.utils.nowdate(), 1)
             si.transporter = (doc.get("transporter") or "").strip() or None
             si.driver_name = (doc.get("driver_name") or "").strip()
             si.vehicle_no = (doc.get("vehicle_no") or "").strip()
@@ -73,6 +81,8 @@ def save_sales_invoice(doc):
         doc_dict["doctype"] = "Sales Invoice"
         doc_dict["docstatus"] = 0
         doc_dict["update_stock"] = 1
+        if not doc_dict.get("due_date"):
+            doc_dict["due_date"] = frappe.utils.add_months(doc_dict.get("posting_date") or frappe.utils.nowdate(), 1)
         new_si = frappe.get_doc(doc_dict)
         new_si.insert()
         return new_si.as_dict()
