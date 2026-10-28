@@ -473,3 +473,13 @@ def generate_stock_balance_pdf_html(headers, rows, warehouse=None, category=None
     </html>
     """
     return html
+
+
+@frappe.whitelist()
+def export_customer_ledger(customer):
+    """
+    Exports customer transaction history (ledger) to Excel (.xlsx).
+    Calls goldretail.api.payments.payment_allocator.export_customer_ledger
+    """
+    from goldretail.api.payments.payment_allocator import export_customer_ledger as _export
+    return _export(customer)
