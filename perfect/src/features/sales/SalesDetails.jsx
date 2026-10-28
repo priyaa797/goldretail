@@ -385,7 +385,7 @@ export default function SalesDetails() {
                   <TableCell sx={{ fontWeight: 600, width: 60, minWidth: 60, position: 'sticky', left: 0, bgcolor: 'background.default', zIndex: 2 }}>S.No.</TableCell>
                   <TableCell sx={{ fontWeight: 600, width: 250, minWidth: 250, position: 'sticky', left: 60, bgcolor: 'background.default', zIndex: 2, borderRight: '1px solid', borderColor: 'divider' }}>Item Code</TableCell>
                   <TableCell sx={{ fontWeight: 600, minWidth: 150 }}>Item Name</TableCell>
-                  <TableCell sx={{ fontWeight: 600, minWidth: 200 }}>Description</TableCell>
+                  <TableCell sx={{ fontWeight: 600, minWidth: 160 }}>Warehouse</TableCell>
                   <TableCell sx={{ fontWeight: 600, width: 100 }}>Carton</TableCell>
                   <TableCell sx={{ fontWeight: 600, width: 100 }}>Packing</TableCell>
                   <TableCell sx={{ fontWeight: 600, width: 120 }}>Quantity</TableCell>
@@ -419,8 +419,8 @@ export default function SalesDetails() {
                       <TableCell sx={{ position: 'sticky', left: 60, bgcolor: 'background.paper', zIndex: 1, borderRight: '1px solid', borderColor: 'divider' }}>{item.item_code}</TableCell>
                       <TableCell>{item.item_name}</TableCell>
                       <TableCell>
-                        <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 200 }} title={item.description}>
-                          {item.description ? item.description.replace(/<[^>]*>?/gm, '') : '-'}
+                        <Typography variant="body2" fontWeight="500">
+                          {item.warehouse || '-'}
                         </Typography>
                       </TableCell>
                       <TableCell>{item.carton || '-'}</TableCell>

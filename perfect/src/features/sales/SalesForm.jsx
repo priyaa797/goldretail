@@ -31,7 +31,7 @@ export default function SalesForm() {
   const [customer, setCustomer] = useState('');
   const [priceList, setPriceList] = useState('Wholesale');
   const [gstApplicable, setGstApplicable] = useState(false);
-  const [items, setItems] = useState([{ item_code: '', item_name: '', description: '', qty: '', rate: 0, user_rate: '', carton: '', packing: '', total_weight: '', discount: '' }]);
+  const [items, setItems] = useState([{ item_code: '', item_name: '', warehouse: '', qty: '', rate: 0, user_rate: '', carton: '', packing: '', total_weight: '', discount: '' }]);
   const [transportationCharges, setTransportationCharges] = useState('');
   const [packagingCharges, setPackagingCharges] = useState('');
   const [transporter, setTransporter] = useState('');
@@ -64,6 +64,50 @@ export default function SalesForm() {
     if (!rawTransporters) return [];
     return rawTransporters.filter(t => t.is_transporter === 1 || t.is_transporter === true);
   }, [rawTransporters]);
+
+  const { data: rawWarehouses } = useFrappeGetDocList('Warehouse', {
+    fields: ['name', 'warehouse_name', 'is_group', 'disabled'],
+    filters: [
+      ['is_group', '=', 0],
+      ['disabled', '=', 0]
+    ],
+    orderBy: { field: 'name', order: 'asc' },
+    limit: 1000
+  });
+
+  const warehouses = useMemo(() => {
+    if (!rawWarehouses) return [];
+    return rawWarehouses.filter(w => !w.is_group && !w.disabled);
+  }, [rawWarehouses]);
+
+  const defaultWarehouse = warehouses[0]?.name || `NEW - ${import.meta.env.VITE_COMPANY_ABBR || 'PC'}`;
+
+  const { data: bins } = useFrappeGetDocList('Bin', {
+    fields: ['item_code', 'warehouse', 'actual_qty'],
+    limit: 100000
+  });
+
+  const binMap = useMemo(() => {
+    const map = {};
+    if (bins && bins.length) {
+      for (const b of bins) {
+        map[`${b.item_code}:::${b.warehouse}`] = Number(b.actual_qty) || 0;
+      }
+    }
+    return map;
+  }, [bins]);
+
+  // Set default warehouse on initial item if empty once defaultWarehouse resolves
+  useEffect(() => {
+    if (defaultWarehouse) {
+      setItems(prev => {
+        if (prev.length === 1 && !prev[0].item_code && !prev[0].warehouse) {
+          return [{ ...prev[0], warehouse: defaultWarehouse }];
+        }
+        return prev;
+      });
+    }
+  }, [defaultWarehouse]);
 
   const { data: itemListResponse } = useFrappeGetCall('goldretail.api.item_barcode.get_all_items');
   const itemList = itemListResponse?.message || [];
@@ -137,7 +181,7 @@ export default function SalesForm() {
           return {
             item_code: item.item_code,
             item_name: item.item_name || fullItem?.item_name || '',
-            description: item.description ? item.description.replace(/<[^>]*>?/gm, '') : (fullItem?.description || ''),
+            warehouse: item.warehouse || defaultWarehouse || '',
             qty: item.qty ? String(item.qty) : '',
             rate: sysPrice || baseRate,
             user_rate: userRateVal,
@@ -163,13 +207,13 @@ export default function SalesForm() {
         packagingCharges: Number(initialPackaging) || 0,
         items: loadedItems.map(i => ({
           item_code: i.item_code,
+          warehouse: (i.warehouse || '').trim(),
           qty: Number(i.qty) || 0,
           rate: Number(i.user_rate) || Number(i.rate) || 0,
           discount: Number(i.discount) || 0,
           carton: Number(i.carton) || 0,
           packing: Number(i.packing) || 0,
-          total_weight: Number(i.total_weight) || 0,
-          description: (i.description || '').trim()
+          total_weight: Number(i.total_weight) || 0
         }))
       };
 
@@ -204,7 +248,7 @@ export default function SalesForm() {
       if ((Number(cur.packing) || 0) !== orig.packing) return true;
       const curWeight = Number(cur.total_weight) || 0;
       if (Math.abs(curWeight - orig.total_weight) > 0.001) return true;
-      if ((cur.description || '').trim() !== (orig.description || '').trim()) return true;
+      if ((cur.warehouse || '').trim() !== (orig.warehouse || '').trim()) return true;
     }
 
     return false;
@@ -410,7 +454,7 @@ export default function SalesForm() {
           const newItem = {
             item_code: itemData.item_code,
             item_name: fullItem?.item_name || itemData.item_name || '',
-            description: fullItem?.description || itemData.description || '',
+            warehouse: fullItem?.default_warehouse || defaultWarehouse || warehouses[0]?.name || '',
             qty: '',
             rate: getPrice(itemData.item_code) || fullItem?.standard_rate || itemData.standard_rate || 0,
             user_rate: '',
@@ -490,11 +534,10 @@ export default function SalesForm() {
           qty: qty,
           price_list_rate: baseRate,
           discount_percentage: discountPercentage,
-          description: i.description,
           carton: Number(i.carton) || 0,
           packing: Number(i.packing) || 0,
           total_weight: Number(i.total_weight) || 0,
-          warehouse: `NEW - ${import.meta.env.VITE_COMPANY_ABBR || 'KGF'}`
+          warehouse: i.warehouse || defaultWarehouse || ''
         };
       }),
       taxes_and_charges: gstApplicable
@@ -569,7 +612,7 @@ export default function SalesForm() {
     const newIndex = items.length;
     focusRowIndexRef.current = newIndex;
     setOpenRowIndex(newIndex);
-    setItems([...items, { item_code: '', item_name: '', description: '', qty: '', rate: 0, user_rate: '', carton: '', packing: '', total_weight: '', discount: '' }]);
+    setItems([...items, { item_code: '', item_name: '', warehouse: defaultWarehouse || warehouses[0]?.name || '', qty: '', rate: 0, user_rate: '', carton: '', packing: '', total_weight: '', discount: '' }]);
   };
   const removeItem = (index) => {
     if (openRowIndex === index) {
@@ -783,7 +826,7 @@ export default function SalesForm() {
                 <TableCell sx={{ width: 60, minWidth: 60, position: 'sticky', left: 0, bgcolor: 'background.paper', zIndex: 2 }}>#</TableCell>
                 <TableCell sx={{ width: 185, minWidth: 185, position: 'sticky', left: 60, bgcolor: 'background.paper', zIndex: 2, borderRight: '1px solid', borderColor: 'divider' }}>Item Code</TableCell>
                 <TableCell sx={{ minWidth: 80 }}>Item Name</TableCell>
-                <TableCell sx={{ width: 200, minWidth: 200 }}>Description</TableCell>
+                <TableCell sx={{ width: 170, minWidth: 170 }}>Warehouse</TableCell>
                 <TableCell sx={{ width: 100 }}>Carton</TableCell>
                 <TableCell sx={{ width: 100 }}>Packing</TableCell>
                 <TableCell sx={{ width: 120 }}>Quantity</TableCell>
@@ -848,7 +891,9 @@ export default function SalesForm() {
                           if (newValue) {
                             newItems[idx].item_code = newValue.item_code;
                             newItems[idx].item_name = newValue.item_name;
-                            newItems[idx].description = newValue.description;
+                            if (!newItems[idx].warehouse) {
+                              newItems[idx].warehouse = defaultWarehouse || warehouses[0]?.name || '';
+                            }
                             newItems[idx].rate = getPrice(newValue.item_code) || newValue.standard_rate || 0;
                             newItems[idx].user_rate = '';
                             newItems[idx].carton = '';
@@ -861,7 +906,6 @@ export default function SalesForm() {
                           } else {
                             newItems[idx].item_code = '';
                             newItems[idx].item_name = '';
-                            newItems[idx].description = '';
                             newItems[idx].rate = 0;
                             newItems[idx].user_rate = '';
                             newItems[idx].carton = '';
@@ -903,12 +947,73 @@ export default function SalesForm() {
                     <TableCell>
                       <Typography variant="body2">{item.item_name || '-'}</Typography>
                     </TableCell>
-                    <TableCell>
-                      <CustomTextField size="small" multiline maxRows={4} placeholder="Description" value={item.description || ''} onChange={e => {
-                        const newItems = [...items];
-                        newItems[idx].description = e.target.value;
-                        setItems(newItems);
-                      }} />
+                    <TableCell sx={{ minWidth: 170, width: 170, verticalAlign: 'top' }}>
+                      <CustomTextField
+                        select
+                        size="small"
+                        fullWidth
+                        value={item.warehouse || ''}
+                        onChange={e => {
+                          const val = e.target.value;
+                          const newItems = [...items];
+                          newItems[idx].warehouse = val;
+                          setItems(newItems);
+                        }}
+                        SelectProps={{
+                          displayEmpty: true,
+                          renderValue: (selected) => {
+                            if (!selected) return <span style={{ color: '#aaa' }}>Select Warehouse</span>;
+                            return selected;
+                          }
+                        }}
+                      >
+                        <MenuItem value="" disabled>
+                          <em>Select Warehouse</em>
+                        </MenuItem>
+                        {warehouses.map(wh => {
+                          const bal = item.item_code ? (binMap[`${item.item_code}:::${wh.name}`] ?? 0) : 0;
+                          return (
+                            <MenuItem key={wh.name} value={wh.name}>
+                              <Box display="flex" justifyContent="space-between" alignItems="center" width="100%" gap={2}>
+                                <Typography variant="body2">{wh.name}</Typography>
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    fontWeight: 600,
+                                    color: item.item_code ? (bal > 0 ? 'success.main' : 'text.disabled') : 'text.disabled',
+                                    bgcolor: item.item_code && bal > 0 ? 'success.lighter' : 'action.hover',
+                                    px: 0.8,
+                                    py: 0.2,
+                                    borderRadius: 1
+                                  }}
+                                >
+                                  {item.item_code ? `Bal: ${bal}` : 'Bal: -'}
+                                </Typography>
+                              </Box>
+                            </MenuItem>
+                          );
+                        })}
+                      </CustomTextField>
+                      {item.warehouse && (
+                        <Box sx={{ mt: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Bal Qty:
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            fontWeight="bold"
+                            color={
+                              !item.item_code
+                                ? 'text.secondary'
+                                : (binMap[`${item.item_code}:::${item.warehouse}`] ?? 0) > 0
+                                ? 'success.main'
+                                : 'error.main'
+                            }
+                          >
+                            {item.item_code ? (binMap[`${item.item_code}:::${item.warehouse}`] ?? 0) : '-'}
+                          </Typography>
+                        </Box>
+                      )}
                     </TableCell>
                     <TableCell>
                       <CustomTextField size="small" value={item.carton} disabled={!!item.qty && !item.carton} onChange={e => {
