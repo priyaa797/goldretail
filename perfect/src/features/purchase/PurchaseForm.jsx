@@ -78,7 +78,10 @@ export default function PurchaseForm() {
     }
   }, [defaultWarehouse]);
   const { data: itemListResponse, mutate: mutateItemList } = useFrappeGetCall('goldretail.api.item_barcode.get_all_items');
-  const itemList = itemListResponse?.message || [];
+  const rawItemList = itemListResponse?.message || [];
+  const itemList = useMemo(() => {
+    return rawItemList.filter(i => !i.disabled || Number(i.disabled) === 0);
+  }, [rawItemList]);
 
   const { call: insertDoc } = useFrappePostCall('frappe.client.insert');
   const { call: getBarcodeItem } = useFrappePostCall('goldretail.api.item_barcode.get_item_by_barcode');

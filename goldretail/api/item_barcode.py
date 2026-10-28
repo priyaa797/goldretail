@@ -85,6 +85,8 @@ def get_item_by_barcode(barcode_val):
         frappe.throw(f"No item found for barcode {barcode_val}")
         
     item = frappe.get_doc("Item", item_barcode)
+    if item.disabled:
+        frappe.throw(f"Item {item.item_code} is disabled.")
     
     # Fetch tax
     gst_percent = 0.0
@@ -119,7 +121,7 @@ def get_item_by_barcode(barcode_val):
 
 @frappe.whitelist()
 def get_all_items():
-    items = frappe.get_all('Item', fields=['name', 'item_code', 'item_name', 'description', 'standard_rate', 'weight_per_unit', 'gst_hsn_code'])
+    items = frappe.get_all('Item', filters={'disabled': 0}, fields=['name', 'item_code', 'item_name', 'description', 'standard_rate', 'weight_per_unit', 'gst_hsn_code', 'disabled'])
     
     # Pre-fetch item taxes to optimize
     item_taxes = frappe.get_all('Item Tax', fields=['parent', 'parenttype', 'item_tax_template'])

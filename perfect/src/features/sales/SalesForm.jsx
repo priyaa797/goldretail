@@ -111,7 +111,10 @@ export default function SalesForm() {
   }, [defaultWarehouse]);
 
   const { data: itemListResponse } = useFrappeGetCall('goldretail.api.item_barcode.get_all_items');
-  const itemList = itemListResponse?.message || [];
+  const rawItemList = itemListResponse?.message || [];
+  const itemList = useMemo(() => {
+    return rawItemList.filter(i => !i.disabled || Number(i.disabled) === 0);
+  }, [rawItemList]);
 
   const { data: itemPrices } = useFrappeGetDocList('Item Price', {
     fields: ['item_code', 'price_list_rate'],
