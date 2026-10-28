@@ -1,17 +1,17 @@
 import React from 'react';
-import { Box, Typography, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Chip } from '@mui/material';
+import { Box, Typography, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip } from '@mui/material';
 import BlankCard from '../../components/shared/BlankCard';
 import { useFrappeGetDocList } from 'frappe-react-sdk';
 import { useNavigate } from 'react-router';
-import { IconPlus, IconEye } from '@tabler/icons-react';
+import { IconPlus } from '@tabler/icons-react';
 import Spinner from '../../views/spinner/Spinner';
 
 export default function SupplierList() {
   const navigate = useNavigate();
 
   const { data: suppliers, isLoading, error } = useFrappeGetDocList('Supplier', {
-    fields: ['name', 'supplier_name', 'supplier_group', 'supplier_type'],
-    limit: 100,
+    fields: ['name', 'supplier_name', 'supplier_group', 'supplier_type', 'is_transporter'],
+    limit: 1000,
     orderBy: { field: 'creation', order: 'desc' }
   });
 
@@ -35,6 +35,7 @@ export default function SupplierList() {
                 <TableCell>Supplier Name</TableCell>
                 <TableCell>Supplier Group</TableCell>
                 <TableCell>Supplier Type</TableCell>
+                <TableCell>Type</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -51,11 +52,19 @@ export default function SupplierList() {
                   </TableCell>
                   <TableCell>{supplier.supplier_group}</TableCell>
                   <TableCell>{supplier.supplier_type}</TableCell>
+                  <TableCell>
+                    <Chip 
+                      size="small" 
+                      label={supplier.is_transporter ? 'Transporter' : 'Supplier'} 
+                      color={supplier.is_transporter ? 'primary' : 'default'}
+                      variant={supplier.is_transporter ? 'filled' : 'outlined'}
+                    />
+                  </TableCell>
                 </TableRow>
               ))}
               {!suppliers?.length && (
                 <TableRow>
-                  <TableCell colSpan={3} align="center">
+                  <TableCell colSpan={4} align="center">
                     <Typography variant="body2" color="textSecondary" sx={{ py: 3 }}>No Suppliers Found</Typography>
                   </TableCell>
                 </TableRow>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Box, Button, Typography, Grid, MenuItem, IconButton, Table, TableBody, TableCell, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, createFilterOptions } from '@mui/material';
 import BlankCard from '../../components/shared/BlankCard';
 
@@ -23,7 +23,16 @@ export default function PurchaseForm() {
   const [openRowIndex, setOpenRowIndex] = useState(null);
   const focusRowIndexRef = useRef(null);
 
-  const { data: suppliers } = useFrappeGetDocList('Supplier', { fields: ['name'] });
+  const { data: rawSuppliers } = useFrappeGetDocList('Supplier', {
+    fields: ['name', 'is_transporter'],
+    filters: [['is_transporter', '!=', 1]],
+    limit: 1000
+  });
+
+  const suppliers = useMemo(() => {
+    if (!rawSuppliers) return [];
+    return rawSuppliers.filter(s => !s.is_transporter || Number(s.is_transporter) === 0);
+  }, [rawSuppliers]);
   const { data: itemListResponse, mutate: mutateItemList } = useFrappeGetCall('goldretail.api.item_barcode.get_all_items');
   const itemList = itemListResponse?.message || [];
 

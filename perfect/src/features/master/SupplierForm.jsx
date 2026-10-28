@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Button, Grid, Divider } from '@mui/material';
+import { Box, Typography, Button, Grid, Divider, MenuItem, Chip } from '@mui/material';
 import BlankCard from '../../components/shared/BlankCard';
 import CustomTextField from '../../components/forms/theme-elements/CustomTextField';
+import CustomSelect from '../../components/forms/theme-elements/CustomSelect';
 
 import { useFrappeCreateDoc, useFrappeGetDoc, useFrappePostCall } from 'frappe-react-sdk';
 import { useNavigate, useParams } from 'react-router';
@@ -24,6 +25,7 @@ export default function SupplierForm() {
 
   const [formData, setFormData] = useState({
     supplier_name: '',
+    type: 'Supplier',
     first_name: '',
     last_name: '',
     phone: ''
@@ -31,11 +33,13 @@ export default function SupplierForm() {
 
   useEffect(() => {
     if (isViewMode && supplier) {
+      const typeVal = supplier.is_transporter ? 'Transporter' : 'Supplier';
       getPartyContact({ party_type: 'Supplier', party_name: supplier.name })
         .then((res) => {
           const contact = res ? res.message || res : null;
           setFormData({
             supplier_name: supplier.supplier_name || '',
+            type: typeVal,
             first_name: contact?.first_name || '',
             last_name: contact?.last_name || '',
             phone: contact?.phone || contact?.mobile_no || ''
@@ -45,6 +49,7 @@ export default function SupplierForm() {
           console.error(e);
           setFormData({
             supplier_name: supplier.supplier_name || '',
+            type: typeVal,
             first_name: '',
             last_name: '',
             phone: ''
@@ -65,8 +70,10 @@ export default function SupplierForm() {
     }
 
     try {
+      const isTransporter = formData.type === 'Transporter' ? 1 : 0;
       const suppRes = await createSupplier('Supplier', {
         supplier_name: formData.supplier_name,
+        is_transporter: isTransporter,
       });
 
       if (suppRes && suppRes.name) {
@@ -95,9 +102,25 @@ export default function SupplierForm() {
           <Button startIcon={<IconArrowLeft size={18} />} onClick={() => navigate('/master/supplier')}>
             Back to List
           </Button>
-          <Typography variant="h5" fontWeight="bold">
-            {isViewMode ? `Supplier Details: ${supplier?.supplier_name}` : 'New Supplier'}
-          </Typography>
+          <Box>
+            <Box display="flex" alignItems="center" gap={1.5}>
+              <Typography variant="h5" fontWeight="bold">
+                {isViewMode ? `Supplier Details: ${supplier?.supplier_name}` : 'New Supplier'}
+              </Typography>
+              {isViewMode && (
+                <Chip
+                  size="small"
+                  label={supplier?.is_transporter ? 'Transporter' : 'Supplier'}
+                  color={supplier?.is_transporter ? 'primary' : 'default'}
+                />
+              )}
+            </Box>
+            {isViewMode && (
+              <Typography variant="subtitle2" color="textSecondary">
+                Type: {supplier?.is_transporter ? 'Transporter' : 'Supplier'}
+              </Typography>
+            )}
+          </Box>
         </Box>
         {!isViewMode && (
           <Button
@@ -124,6 +147,26 @@ export default function SupplierForm() {
               onChange={handleChange}
               disabled={isViewMode}
             />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Typography variant="subtitle2" fontWeight="600" mb={1}>Type</Typography>
+            {isViewMode ? (
+              <Box display="flex" alignItems="center" height="42px">
+                <Typography variant="subtitle1" fontWeight="600">
+                  Type: {supplier?.is_transporter ? 'Transporter' : 'Supplier'}
+                </Typography>
+              </Box>
+            ) : (
+              <CustomSelect
+                fullWidth
+                name="type"
+                value={formData.type}
+                onChange={handleChange}
+              >
+                <MenuItem value="Supplier">Supplier</MenuItem>
+                <MenuItem value="Transporter">Transporter</MenuItem>
+              </CustomSelect>
+            )}
           </Grid>
         </Grid>
 
