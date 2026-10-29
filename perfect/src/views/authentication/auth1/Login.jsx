@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 import Grid from '@mui/material/Grid2';
 import Box from '@mui/material/Box';
-import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useFrappeAuth } from 'frappe-react-sdk';
+import { useDispatch } from 'react-redux';
+import { setDarkMode, setTheme } from 'src/store/customizer/CustomizerSlice';
 import toast from 'react-hot-toast';
 
 import PageContainer from 'src/components/container/PageContainer';
@@ -15,6 +16,7 @@ import AuthLogin from '../authForms/AuthLogin';
 const Login = () => {
   const { login, currentUser } = useFrappeAuth();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -23,17 +25,40 @@ const Login = () => {
     }
   }, [currentUser, navigate]);
 
-  const handleLogin = (email, password) => {
+  const handleLogin = async (email, password) => {
     setLoading(true);
-    login({ username: email, password })
-      .then(() => {
-        toast.success('Logged in successfully!');
-        navigate('/');
-      })
-      .catch((err) => {
-        setLoading(false);
-        toast.error('Login failed. Please check your credentials.');
-      });
+    try {
+      await login({ username: email, password });
+      toast.success('Logged in successfully!');
+
+      // Check theme and title with Frappe as soon as we login
+      try {
+        const [deskRes, userRes, titleRes] = await Promise.allSettled([
+          fetch('/api/method/goldretail.api.system.get_desk_theme').then((r) => r.json()),
+          fetch('/api/method/goldretail.api.system.get_user_theme').then((r) => r.json()),
+          fetch('/api/method/goldretail.api.system.get_app_title').then((r) => r.json()),
+        ]);
+
+        if (deskRes.status === 'fulfilled' && deskRes.value?.message) {
+          const mode = deskRes.value.message.toLowerCase() === 'dark' ? 'dark' : 'light';
+          dispatch(setDarkMode(mode));
+        }
+
+        if (userRes.status === 'fulfilled' && userRes.value?.message) {
+          dispatch(setTheme(userRes.value.message));
+        }
+
+        const appTitle = (titleRes.status === 'fulfilled' && titleRes.value?.message) || 'Prime';
+        document.title = appTitle;
+      } catch (e) {
+        document.title = 'Prime';
+      }
+
+      navigate('/');
+    } catch (err) {
+      setLoading(false);
+      toast.error('Login failed. Please check your credentials.');
+    }
   };
 
   return (

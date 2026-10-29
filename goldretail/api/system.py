@@ -80,3 +80,12 @@ def get_desk_theme():
     if frappe.session.user == "Guest":
         return None
     return frappe.db.get_value("User", frappe.session.user, "desk_theme")
+
+@frappe.whitelist(allow_guest=True)
+def get_app_title():
+    title = (
+        frappe.db.get_single_value("Website Settings", "app_name")
+        or frappe.db.get_single_value("System Settings", "app_name")
+    )
+    return title or "Prime"
+

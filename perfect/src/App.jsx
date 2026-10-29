@@ -7,7 +7,7 @@ import { CssBaseline, ThemeProvider, Box } from '@mui/material';
 import { RouterProvider } from 'react-router';
 import router from './routes/Router';
 import { Toaster } from 'react-hot-toast';
-import { useFrappeGetCall, useFrappePostCall, useFrappeEventListener } from 'frappe-react-sdk';
+import { useFrappeGetCall, useFrappePostCall, useFrappeEventListener, useFrappeAuth } from 'frappe-react-sdk';
 import { setTheme, setDarkMode } from 'src/store/customizer/CustomizerSlice';
 
 function App() {
@@ -101,9 +101,12 @@ function App() {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
-  const { data: userTheme } = useFrappeGetCall('goldretail.api.system.get_user_theme');
-  const { data: deskTheme } = useFrappeGetCall('goldretail.api.system.get_desk_theme');
+  const { currentUser } = useFrappeAuth();
+  const { data: userTheme, mutate: mutateUserTheme } = useFrappeGetCall('goldretail.api.system.get_user_theme');
+  const { data: deskTheme, mutate: mutateDeskTheme } = useFrappeGetCall('goldretail.api.system.get_desk_theme');
   const { call: setDeskTheme } = useFrappePostCall('goldretail.api.system.set_desk_theme');
+
+  const themeLoadedRef = useRef(false);
 
   useEffect(() => {
     if (userTheme && userTheme.message) {
@@ -113,9 +116,37 @@ function App() {
 
   useEffect(() => {
     if (deskTheme && deskTheme.message) {
+      themeLoadedRef.current = true;
       dispatch(setDarkMode(deskTheme.message.toLowerCase() === 'dark' ? 'dark' : 'light'));
     }
   }, [deskTheme, dispatch]);
+
+  // Immediately check with Frappe as soon as user logs in / session detected
+  useEffect(() => {
+    if (currentUser) {
+      mutateDeskTheme();
+      mutateUserTheme();
+
+      fetch('/api/method/goldretail.api.system.get_desk_theme')
+        .then((r) => r.json())
+        .then((data) => {
+          if (data && data.message) {
+            themeLoadedRef.current = true;
+            dispatch(setDarkMode(data.message.toLowerCase() === 'dark' ? 'dark' : 'light'));
+          }
+        })
+        .catch(() => {});
+
+      fetch('/api/method/goldretail.api.system.get_user_theme')
+        .then((r) => r.json())
+        .then((data) => {
+          if (data && data.message) {
+            dispatch(setTheme(data.message));
+          }
+        })
+        .catch(() => {});
+    }
+  }, [currentUser, dispatch, mutateDeskTheme, mutateUserTheme]);
 
   const initialRender = useRef(true);
   useEffect(() => {
@@ -123,8 +154,10 @@ function App() {
       initialRender.current = false;
       return;
     }
-    setDeskTheme({ mode: customizer.activeMode });
-  }, [customizer.activeMode]);
+    if (themeLoadedRef.current && currentUser) {
+      setDeskTheme({ mode: customizer.activeMode });
+    }
+  }, [customizer.activeMode, currentUser]);
 
   return (
     <ThemeProvider theme={theme}>

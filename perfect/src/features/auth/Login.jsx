@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useFrappeAuth } from 'frappe-react-sdk';
 import { useNavigate } from 'react-router';
+import { useDispatch } from 'react-redux';
+import { setDarkMode, setTheme } from 'src/store/customizer/CustomizerSlice';
 import { Box, Button, Typography } from '@mui/material';
 import BlankCard from '../../components/shared/BlankCard';
 
@@ -11,6 +13,7 @@ import toast from 'react-hot-toast';
 export default function Login() {
   const { login, currentUser } = useFrappeAuth();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -20,16 +23,38 @@ export default function Login() {
     }
   }, [currentUser, navigate]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    login({ username: email, password })
-      .then(() => {
-        toast.success('Logged in successfully!');
-        navigate('/');
-      })
-      .catch((err) => {
-        toast.error('Login failed. Please check your credentials.');
-      });
+    try {
+      await login({ username: email, password });
+      toast.success('Logged in successfully!');
+
+      try {
+        const [deskRes, userRes, titleRes] = await Promise.allSettled([
+          fetch('/api/method/goldretail.api.system.get_desk_theme').then((r) => r.json()),
+          fetch('/api/method/goldretail.api.system.get_user_theme').then((r) => r.json()),
+          fetch('/api/method/goldretail.api.system.get_app_title').then((r) => r.json()),
+        ]);
+
+        if (deskRes.status === 'fulfilled' && deskRes.value?.message) {
+          const mode = deskRes.value.message.toLowerCase() === 'dark' ? 'dark' : 'light';
+          dispatch(setDarkMode(mode));
+        }
+
+        if (userRes.status === 'fulfilled' && userRes.value?.message) {
+          dispatch(setTheme(userRes.value.message));
+        }
+
+        const appTitle = (titleRes.status === 'fulfilled' && titleRes.value?.message) || 'Prime';
+        document.title = appTitle;
+      } catch (err) {
+        document.title = 'Prime';
+      }
+
+      navigate('/');
+    } catch (err) {
+      toast.error('Login failed. Please check your credentials.');
+    }
   };
 
   return (
