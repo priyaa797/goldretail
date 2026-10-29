@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { ThemeSettings } from './theme/Theme';
@@ -10,39 +9,50 @@ import { Toaster } from 'react-hot-toast';
 import { useFrappeGetCall, useFrappePostCall, useFrappeEventListener, useFrappeAuth } from 'frappe-react-sdk';
 import { setTheme, setDarkMode } from 'src/store/customizer/CustomizerSlice';
 
-function App() {
-  const theme = ThemeSettings();
-  const customizer = useSelector((state) => state.customizer);
-  const dispatch = useDispatch();
-
+function SystemDownOverlay() {
   const [systemDownState, setSystemDownState] = useState(null);
 
-  // Poll system status every 4 seconds to ensure it catches kill switch even if socket event is missed
+  // Fetch status on mount without continuous polling to avoid re-rendering and closing menus
   const { data: systemStatusData } = useFrappeGetCall(
     'goldretail.api.system.get_system_status',
     null,
     'system_status_global',
-    { refreshInterval: 4000 }
-  );
-
-  useEffect(() => {
-    if (systemStatusData) {
-      const state = systemStatusData.message || systemStatusData;
-      if (state && typeof state.is_down !== 'undefined') {
-        setSystemDownState(state);
-      }
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
     }
-  }, [systemStatusData]);
+  );
 
   const executeRedirect = (target) => {
     if (!target) return;
-    const targetUrl = (target.startsWith('http://') || target.startsWith('https://') || target.startsWith('/'))
+    const targetUrl = target.startsWith('http://') || target.startsWith('https://') || target.startsWith('/')
       ? target
       : `/${target}`;
     if (window.location.href !== targetUrl && window.location.pathname !== targetUrl) {
       window.location.replace(targetUrl);
     }
   };
+
+  const updateStateIfChanged = (newState) => {
+    if (!newState || typeof newState.is_down === 'undefined') return;
+    setSystemDownState((prev) => {
+      if (
+        prev?.is_down === newState.is_down &&
+        prev?.image_url === newState.image_url &&
+        prev?.redirect_url === newState.redirect_url
+      ) {
+        return prev;
+      }
+      return newState;
+    });
+  };
+
+  useEffect(() => {
+    if (systemStatusData) {
+      const state = systemStatusData.message || systemStatusData;
+      updateStateIfChanged(state);
+    }
+  }, [systemStatusData]);
 
   useEffect(() => {
     if (!systemDownState) return;
@@ -58,7 +68,7 @@ function App() {
   // Real-time socket listener
   useFrappeEventListener('system_down_toggled', (data) => {
     if (data && typeof data.is_down !== 'undefined') {
-      setSystemDownState(data);
+      updateStateIfChanged(data);
       if (data.is_down && data.redirect_url) {
         executeRedirect(data.redirect_url);
       }
@@ -69,7 +79,7 @@ function App() {
   useEffect(() => {
     const handleLocalToggle = (e) => {
       if (e.detail && typeof e.detail.is_down !== 'undefined') {
-        setSystemDownState(e.detail);
+        updateStateIfChanged(e.detail);
         if (e.detail.is_down && e.detail.redirect_url) {
           executeRedirect(e.detail.redirect_url);
         }
@@ -79,7 +89,7 @@ function App() {
     return () => window.removeEventListener('system_down_toggled', handleLocalToggle);
   }, []);
 
-  // Ensure inactive tabs immediately check and redirect when user switches back to them
+  // Ensure inactive tabs check when user switches back to them
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -87,9 +97,9 @@ function App() {
           .then((r) => r.json())
           .then((data) => {
             const state = data.message || data;
-            if (state && state.is_down) {
-              setSystemDownState(state);
-              if (state.redirect_url) {
+            if (state && typeof state.is_down !== 'undefined') {
+              updateStateIfChanged(state);
+              if (state.is_down && state.redirect_url) {
                 executeRedirect(state.redirect_url);
               }
             }
@@ -100,6 +110,46 @@ function App() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
+
+  if (!systemDownState?.is_down) return null;
+
+  return (
+    <Box
+      id="system-down-overlay"
+      sx={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        zIndex: 99999999,
+        bgcolor: '#000',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+      }}
+    >
+      {systemDownState.image_url && (
+        <Box
+          component="img"
+          src={systemDownState.image_url}
+          alt="System Down"
+          sx={{
+            maxWidth: '100%',
+            maxHeight: '100%',
+            objectFit: 'contain',
+          }}
+        />
+      )}
+    </Box>
+  );
+}
+
+function App() {
+  const theme = ThemeSettings();
+  const customizer = useSelector((state) => state.customizer);
+  const dispatch = useDispatch();
 
   const { currentUser } = useFrappeAuth();
   const { data: userTheme, mutate: mutateUserTheme } = useFrappeGetCall('goldretail.api.system.get_user_theme');
@@ -165,37 +215,7 @@ function App() {
         <CssBaseline />
         <Toaster position="top-right" />
         <RouterProvider router={router} />
-        {systemDownState?.is_down && (
-          <Box
-            id="system-down-overlay"
-            sx={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              width: '100vw',
-              height: '100vh',
-              zIndex: 99999999,
-              bgcolor: '#000',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden'
-            }}
-          >
-            {systemDownState.image_url && (
-              <Box
-                component="img"
-                src={systemDownState.image_url}
-                alt="System Down"
-                sx={{
-                  maxWidth: '100%',
-                  maxHeight: '100%',
-                  objectFit: 'contain'
-                }}
-              />
-            )}
-          </Box>
-        )}
+        <SystemDownOverlay />
       </RTL>
     </ThemeProvider>
   );
