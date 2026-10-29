@@ -4,10 +4,11 @@ import { useSelector } from 'react-redux';
 import img1 from 'src/assets/images/profile/user-1.jpg';
 import { IconPower } from '@tabler/icons-react';
 import { useNavigate } from "react-router";
-import { useFrappeAuth } from 'frappe-react-sdk';
+import { useFrappeAuth, useFrappeGetDoc } from 'frappe-react-sdk';
 
 export const Profile = () => {
-  const { logout } = useFrappeAuth();
+  const { logout, currentUser } = useFrappeAuth();
+  const { data: user } = useFrappeGetDoc('User', currentUser || null);
   const navigate = useNavigate();
   const customizer = useSelector((state) => state.customizer);
   const lgUp = useMediaQuery((theme) => theme.breakpoints.up('lg'));
@@ -17,6 +18,8 @@ export const Profile = () => {
     await logout();
     navigate('/auth/login');
   };
+
+  const displayName = user?.first_name || user?.full_name || currentUser || 'Admin';
   
   return (
     <Box
@@ -27,11 +30,11 @@ export const Profile = () => {
     >
       {!hideMenu ? (
         <>
-          <Avatar alt="Remy Sharp" src={img1} />
+          <Avatar alt={displayName} src={user?.user_image || img1} />
 
           <Box>
-            <Typography variant="h6" color="textPrimary">Mathew</Typography>
-            <Typography variant="caption" color="textSecondary">Designer</Typography>
+            <Typography variant="h6" color="textPrimary">{displayName}</Typography>
+            <Typography variant="caption" color="textSecondary">Admin</Typography>
           </Box>
           <Box sx={{ ml: 'auto' }}>
             <Tooltip title="Logout" placement="top">
